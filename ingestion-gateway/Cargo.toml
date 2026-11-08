@@ -1,0 +1,22 @@
+[package]
+name = "vtrack_ingestion_gateway"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "vtrack-gateway"
+path = "src/main.rs"
+
+# Deliberately zero external dependencies. See README.md in this directory:
+# the crates.io index now serves manifests that require Cargo's `edition2024`
+# feature (stabilized in Rust 1.85+) even for old dependency versions we'd
+# want to pin to, and this environment only has the Ubuntu-packaged
+# rustc/cargo 1.75. A real deployment should use a current Rust toolchain
+# (rustup) and the `tokio` + `redis` + `serde` crates as designed in
+# docs/v2-architecture.md - this dependency-free version exists so the
+# parser and gateway logic can be demonstrated as real, compiling, running
+# code in this specific sandboxed environment.
+[dependencies]
+
+[profile.release]
+opt-level = 3

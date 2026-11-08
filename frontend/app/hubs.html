@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hubs | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Hubs</h4>
+        <p class="text-muted mb-0">Where vehicles are kept, batteries are charged and riders report.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="card mb-4"><div class="card-body p-0" id="hubs-list"></div></div>
+    <div class="card"><div class="card-header fw-semibold" id="cp-title">Charge points</div><div class="card-body p-0" id="cp-list"><div class="text-center text-muted py-4">Select a hub to see its charge points.</div></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const isAdmin = Biz.can(...Biz.ADMIN);
+      let hubs = [];
+
+      async function load() {
+        const [h, u] = await Promise.all([VTrackAPI.get('/hubs'), VTrackAPI.get('/organizations/' + VTrackAPI.getUser().organizationId + '/users').catch(() => ({ data: [] }))]);
+        hubs = h.data;
+        const users = Array.isArray(u.data) ? u.data : (u.data?.data ?? []);
+        window._managers = users.filter((x) => x.role === 'hub_manager');
+        document.getElementById('hubs-list').innerHTML = Biz.table([
+          { label: 'Hub', render: (r) => `<span class="fw-medium">${Biz.esc(r.name)}</span>` },
+          { label: 'Region', render: (r) => Biz.esc(r.region) },
+          { label: 'Town', render: (r) => Biz.esc(r.town || '—') },
+          { label: 'Status', render: (r) => Biz.badge(r.status) }, { label: 'Grace (hours)', cls: 'text-end', render: (r) => r.gracePeriodHours || '<span class="text-muted">12 (default)</span>' },
+          { label: 'Manager', render: (r) => { const m = window._managers.find((x) => x.id === r.managerUserId); return m ? Biz.esc(m.email) : (r.managerUserId ? 'Assigned' : '<span class="text-muted">Not assigned</span>'); } },
+          { label: '', cls: 'text-end', render: (r) => `<button class="btn btn-sm btn-outline-secondary" data-act="cp" data-id="${r.id}">Charge points</button> ${isAdmin ? `<button class="btn btn-sm btn-outline-primary" data-act="edit" data-id="${r.id}">Edit</button>` : ''}` },
+        ], hubs, 'No hubs yet. Add the first pilot hub.');
+      }
+
+      const fields = (h = {}) => [
+        { name: 'name', label: 'Hub name', required: true, value: h.name },
+        { name: 'region', label: 'Region', type: 'select', required: true, value: h.region, col: 6, options: ['Greater Accra','Eastern','Central','Ashanti','Western','Western North','Volta','Oti','Northern','Savannah','North East','Upper East','Upper West','Bono','Bono East','Ahafo'].map((r) => ({ value: r, label: r })) },
+        { name: 'town', label: 'Town / area', value: h.town, col: 6 },
+        { name: 'assembly', label: 'District assembly', value: h.assembly },
+        { name: 'gracePeriodHours', label: 'Grace period before a lock (hours)', type: 'number', value: h.gracePeriodHours, col: 6, hint: 'Leave empty for the default of 12 hours. A contract can override it.' },
+        { name: 'status', label: 'Status', type: 'select', required: true, value: h.status || 'pilot', col: 6, options: ['pilot','active','closed'].map((s) => ({ value: s, label: s })) },
+        { name: 'managerUserId', label: 'Hub manager', type: 'select', value: h.managerUserId, col: 6, options: Biz.opts(window._managers, (m) => m.id, (m) => m.email), hint: 'Create the manager as a user with the hub_manager role first.' },
+      ];
+
+      if (isAdmin) {
+        const b = document.createElement('button');
+        b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add hub';
+        b.onclick = () => Biz.form({ title: 'Add a hub', fields: fields(), onSubmit: async (v) => { await VTrackAPI.post('/hubs', v); Biz.toast('Hub created'); load(); } });
+        document.getElementById('page-actions').appendChild(b);
+      }
+
+      document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-act]'); if (!btn) return;
+        const hub = hubs.find((h) => h.id === btn.dataset.id);
+        if (btn.dataset.act === 'edit') {
+          Biz.form({ title: `Edit ${hub.name}`, fields: fields(hub), onSubmit: async (v) => { await VTrackAPI.put(`/hubs/${hub.id}`, v); Biz.toast('Hub updated'); load(); } });
+        }
+        if (btn.dataset.act === 'cp') {
+          document.getElementById('cp-title').textContent = `Charge points at ${hub.name}`;
+          const r = await Biz.run(() => VTrackAPI.get(`/hubs/${hub.id}/charge-points`)); if (!r) return;
+          const add = isAdmin ? `<div class="p-3 border-top"><button class="btn btn-sm btn-outline-primary" id="add-cp">Add charge point</button></div>` : '';
+          document.getElementById('cp-list').innerHTML = Biz.table([
+            { label: 'Name', render: (c) => Biz.esc(c.name) }, { label: 'Power source', render: (c) => Biz.label(c.powerSource) }, { label: 'Status', render: (c) => Biz.badge(c.status) },
+          ], r.data, 'No charge points yet.') + add;
+          const a = document.getElementById('add-cp');
+          if (a) a.onclick = () => Biz.form({ title: `New charge point at ${hub.name}`, fields: [
+            { name: 'name', label: 'Name', required: true },
+            { name: 'powerSource', label: 'Power source', type: 'select', required: true, value: 'grid', options: ['grid','solar','hybrid'].map((s) => ({ value: s, label: s })) },
+          ], onSubmit: async (v) => { await VTrackAPI.post(`/hubs/${hub.id}/charge-points`, v); Biz.toast('Charge point added'); btn.click(); } });
+        }
+      });
+      Biz.run(load);
+    });
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lock Control | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Lock Control</h4>
+        <p class="text-muted mb-0">Grace periods, safe locks and unlocks. A vehicle is never locked while it is moving.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="alert alert-info fs-13">
+      <b>How it works.</b> When a day closes with a shortfall, the rider gets a warning SMS and a grace period starts (the contract's setting, otherwise the hub's, otherwise 12 hours).
+      If it ends unpaid, the vehicle is locked only when it is stationary. Paying the shortfall releases it automatically. Manual locks need an administrator's approval; unlocking needs a reason.
+    </div>
+    <div class="row g-3 mb-4" id="stats"></div>
+    <div class="card mb-4"><div class="card-header fw-semibold">Vehicle lock status</div><div class="card-body p-0" id="states"></div></div>
+    <div class="card mb-4"><div class="card-header d-flex justify-content-between align-items-center"><span class="fw-semibold">Lock requests</span>
+      <select class="form-select form-select-sm w-auto" id="req-filter"><option value="">All</option><option value="pending">Pending</option><option value="executed">Executed</option><option value="failed">Failed</option><option value="rejected">Rejected</option></select></div>
+      <div class="card-body p-0" id="requests"></div></div>
+    <div class="card"><div class="card-header d-flex justify-content-between align-items-center"><span class="fw-semibold">Approved exceptions <span class="badge bg-warning-subtle text-warning ms-1">Proposed rule BR17 - awaiting client confirmation</span></span><button class="btn btn-sm btn-outline-primary" id="add-exc">Add exception</button></div>
+      <div class="card-body p-0" id="exceptions"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const isAdmin = Biz.can(...Biz.ADMIN);
+      const canAct = Biz.can(...Biz.ADMIN, 'fleet_manager', 'hub_manager');
+      let riders = [], vehicles = [];
+      const stateBadge = (s) => ({ none: '<span class="badge bg-success-subtle text-success">Active</span>', warning_sent: '<span class="badge bg-warning-subtle text-warning">Grace period</span>', payment_failed: '<span class="badge bg-warning-subtle text-warning">Payment failed</span>', immobilize_queued: '<span class="badge bg-warning-subtle text-warning">Lock queued</span>', immobilized: '<span class="badge bg-danger-subtle text-danger">Locked</span>' }[s] || Biz.badge(s));
+      const when = (d) => (d ? new Date(d).toLocaleString('en-GB') : '—');
+      const riderName = (id) => (riders.find((r) => r.id === id) || {}).fullName || '—';
+      const plate = (id) => (vehicles.find((v) => v.id === id) || {}).plateNumber || '—';
+
+      async function load() {
+        const [st, rq, ex, r, v] = await Promise.all([
+          VTrackAPI.get('/enforcement/states'), VTrackAPI.get('/enforcement/lock-requests' + (document.getElementById('req-filter').value ? '?status=' + document.getElementById('req-filter').value : '')),
+          VTrackAPI.get('/enforcement/exceptions'), VTrackAPI.get('/riders'), VTrackAPI.get('/vehicles?limit=200')]);
+        riders = r.data; vehicles = v.data;
+        const states = st.data;
+        const count = (s) => states.filter((x) => x.state === s).length;
+        document.getElementById('stats').innerHTML = Biz.stat('In grace period', count('warning_sent') + count('payment_failed') + count('immobilize_queued')) + Biz.stat('Locked now', count('immobilized')) +
+          Biz.stat('Pending requests', rq.data.filter((x) => x.status === 'pending').length) + Biz.stat('Active exceptions', ex.data.filter((x) => x.status === 'active').length);
+        document.getElementById('states').innerHTML = Biz.table([
+          { label: 'Vehicle', render: (x) => `<span class="fw-medium">${Biz.esc(x.plate)}</span>` }, { label: 'Rider', render: (x) => Biz.esc(x.riderName) },
+          { label: 'Status', render: (x) => stateBadge(x.state) }, { label: 'Grace (hours)', cls: 'text-end', render: (x) => x.state === 'none' ? '—' : x.graceHours },
+          { label: 'Grace started', render: (x) => x.state === 'none' ? '—' : when(x.graceStartedAt) }, { label: 'Locked at', render: (x) => when(x.lockedAt) },
+          { label: 'Cause', render: (x) => x.state === 'none' ? '—' : Biz.label(x.source) }, { label: 'Last unlock', render: (x) => x.unlockReason ? `${when(x.unlockedAt)}<div class="text-muted fs-13">${Biz.esc(x.unlockReason)}</div>` : '—' },
+          { label: '', cls: 'text-end', render: (x) => (canAct && x.state !== 'none') ? `<button class="btn btn-sm btn-outline-success" data-unlock="${x.vehicleId}">Unlock</button>` : '' },
+        ], states, 'No vehicle has been through a grace period yet.');
+        document.getElementById('requests').innerHTML = Biz.table([
+          { label: 'Requested', render: (x) => when(x.createdAt) }, { label: 'Type', render: (x) => Biz.badge(x.kind) }, { label: 'Vehicle', render: (x) => Biz.esc(plate(x.vehicleId)) }, { label: 'Rider', render: (x) => Biz.esc(riderName(x.riderId)) },
+          { label: 'Reason', render: (x) => Biz.esc(x.reason) }, { label: 'Status', render: (x) => Biz.badge(x.status) + (x.resultNote ? `<div class="text-muted fs-13">${Biz.esc(x.resultNote)}</div>` : '') },
+          { label: '', cls: 'text-end', render: (x) => (isAdmin && x.status === 'pending') ? `<button class="btn btn-sm btn-danger" data-approve="${x.id}">Approve lock</button> <button class="btn btn-sm btn-outline-secondary" data-reject="${x.id}">Reject</button>` : '' },
+        ], rq.data, 'No lock requests.');
+        document.getElementById('exceptions').innerHTML = Biz.table([
+          { label: 'Rider', render: (x) => Biz.esc(riderName(x.riderId)) }, { label: 'Kind', render: (x) => Biz.label(x.kind) }, { label: 'From', render: (x) => Biz.esc(x.startsOn) }, { label: 'To', render: (x) => Biz.esc(x.endsOn) },
+          { label: 'Reason', render: (x) => Biz.esc(x.reason) }, { label: 'Status', render: (x) => Biz.badge(x.status) },
+          { label: '', cls: 'text-end', render: (x) => (canAct && x.status === 'active') ? `<button class="btn btn-sm btn-outline-secondary" data-cancel="${x.id}">Cancel</button>` : '' },
+        ], ex.data, 'No exceptions. While an exception is active the rider is not locked for non-payment.');
+      }
+
+      if (canAct) {
+        const b = document.createElement('button'); b.className = 'btn btn-outline-danger btn-sm'; b.innerHTML = '<i class="bi bi-lock me-1"></i>Request a lock';
+        b.onclick = () => {
+          const withCar = riders.filter((r) => r.assignedVehicleId);
+          if (!withCar.length) return Biz.toast('No rider has a vehicle assigned.', 'warning');
+          Biz.form({ title: 'Request a lock', intro: 'An administrator must approve it. The vehicle is locked only when it is not moving.', submitLabel: 'Send request', fields: [
+            { name: 'vehicleId', label: 'Rider and vehicle', type: 'select', required: true, options: withCar.map((r) => ({ value: r.assignedVehicleId, label: `${r.fullName} - ${plate(r.assignedVehicleId)}` })) },
+            { name: 'reason', label: 'Reason', type: 'textarea', required: true },
+          ], onSubmit: async (v) => { await VTrackAPI.post('/enforcement/lock-requests', v); Biz.toast('Request sent for approval'); load(); } });
+        };
+        document.getElementById('page-actions').appendChild(b);
+        document.getElementById('add-exc').onclick = () => Biz.form({ title: 'Approve an exception', intro: 'While it is active the rider will not be locked for non-payment, and any running grace period stops.', fields: [
+          { name: 'riderId', label: 'Rider', type: 'select', required: true, options: Biz.opts(riders, (r) => r.id, (r) => r.fullName) },
+          { name: 'kind', label: 'Kind', type: 'select', required: true, col: 6, options: ['sickness', 'breakdown', 'leave', 'other'].map((k) => ({ value: k, label: k })) },
+          { name: 'startsOn', label: 'From', type: 'date', required: true, col: 3 }, { name: 'endsOn', label: 'To', type: 'date', required: true, col: 3 },
+          { name: 'reason', label: 'Reason', type: 'textarea', required: true },
+        ], onSubmit: async (v) => { await VTrackAPI.post('/enforcement/exceptions', v); Biz.toast('Exception approved'); load(); } });
+      } else document.getElementById('add-exc').remove();
+
+      document.getElementById('req-filter').addEventListener('change', () => Biz.run(load));
+      document.addEventListener('click', async (e) => {
+        const t = e.target.closest('button'); if (!t) return;
+        if (t.dataset.unlock) Biz.form({ title: 'Unlock vehicle', intro: 'The reason is stored and audited.', submitLabel: 'Unlock', fields: [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
+          onSubmit: async (v) => { await VTrackAPI.post('/enforcement/unlock', { vehicleId: t.dataset.unlock, reason: v.reason }); Biz.toast('Vehicle unlocked'); load(); } });
+        if (t.dataset.approve && await Biz.confirmAction('Approve this lock? The vehicle will be locked now if it is stationary.')) {
+          const r = await Biz.run(() => VTrackAPI.post(`/enforcement/lock-requests/${t.dataset.approve}/approve`, {}));
+          if (r) { const res = r.data.result; Biz.toast(res.locked ? 'Vehicle locked' : (res.reason || 'Not locked'), res.locked ? 'success' : 'warning'); load(); }
+        }
+        if (t.dataset.reject) Biz.form({ title: 'Reject request', submitLabel: 'Reject', fields: [{ name: 'note', label: 'Note', type: 'textarea' }], onSubmit: async (v) => { await VTrackAPI.post(`/enforcement/lock-requests/${t.dataset.reject}/reject`, v); Biz.toast('Request rejected'); load(); } });
+        if (t.dataset.cancel && await Biz.confirmAction('Cancel this exception?')) { await Biz.run(() => VTrackAPI.post(`/enforcement/exceptions/${t.dataset.cancel}/cancel`, {}), 'Exception cancelled'); load(); }
+      });
+      Biz.run(load);
+    });
+  </script>
+</body>
+</html>

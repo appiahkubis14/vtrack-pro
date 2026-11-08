@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alerts | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Alerts</h4>
+        <p class="text-muted mb-0" id="alerts-subtitle">Loading...</p>
+      </div>
+      <div class="btn-group btn-group-sm" role="group" id="filter-group">
+        <input type="radio" class="btn-check" name="filter" id="filter-all" checked>
+        <label class="btn btn-outline-secondary" for="filter-all">All</label>
+        <input type="radio" class="btn-check" name="filter" id="filter-unack">
+        <label class="btn btn-outline-secondary" for="filter-unack">Unacknowledged</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-0">
+        <div id="alerts-table" class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Severity</th>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th class="pe-4 text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="alerts-table-body">
+              <tr><td colspan="6" class="text-center text-muted py-5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-tables.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    const severityColor = { critical: 'danger', high: 'warning', medium: 'info', low: 'secondary' };
+    let allAlerts = [];
+
+    function render() {
+      const unackOnly = document.getElementById('filter-unack').checked;
+      const rows = unackOnly ? allAlerts.filter((a) => !a.isAcknowledged) : allAlerts;
+      const tbody = document.getElementById('alerts-table-body');
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-5"><i class="bi bi-check-circle text-success fs-2 d-block mb-2"></i>Nothing here</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows
+        .map((a) => {
+          const color = severityColor[a.severity] || 'secondary';
+          const statusBadge = a.isResolved
+            ? '<span class="badge bg-success-subtle text-success">Resolved</span>'
+            : a.isAcknowledged
+              ? '<span class="badge bg-info-subtle text-info">Acknowledged</span>'
+              : '<span class="badge bg-warning-subtle text-warning">Open</span>';
+
+          const actions = [];
+          if (!a.isAcknowledged) actions.push(`<button class="btn btn-sm btn-outline-secondary ack-btn" data-id="${a.id}">Acknowledge</button>`);
+          if (!a.isResolved) actions.push(`<button class="btn btn-sm btn-outline-success resolve-btn" data-id="${a.id}">Resolve</button>`);
+
+          return `
+        <tr>
+          <td class="ps-4"><span class="badge bg-${color}-subtle text-${color} text-uppercase fs-11">${a.severity}</span></td>
+          <td class="fw-medium">${a.title}</td>
+          <td class="fs-13 text-muted text-capitalize">${a.type.replace(/_/g, ' ')}</td>
+          <td class="fs-13 text-muted">${new Date(a.createdAt).toLocaleString()}</td>
+          <td>${statusBadge}</td>
+          <td class="pe-4 text-end">${actions.join(' ')}</td>
+        </tr>`;
+        })
+        .join('');
+
+      tbody.querySelectorAll('.ack-btn').forEach((btn) =>
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await window.VTrackAPI.put(`/alerts/${btn.dataset.id}/acknowledge`);
+          loadAlerts();
+        }),
+      );
+      tbody.querySelectorAll('.resolve-btn').forEach((btn) =>
+        btn.addEventListener('click', async () => {
+          const note = prompt('Resolution note (optional):') || undefined;
+          btn.disabled = true;
+          await window.VTrackAPI.put(`/alerts/${btn.dataset.id}/resolve`, { note });
+          loadAlerts();
+        }),
+      );
+    }
+
+    async function loadAlerts() {
+      const res = await window.VTrackAPI.get('/alerts?limit=100');
+      allAlerts = res.data;
+      document.getElementById('alerts-subtitle').textContent = `${allAlerts.length} alert${allAlerts.length === 1 ? '' : 's'} total`;
+      render();
+    }
+
+    document.querySelectorAll('input[name="filter"]').forEach((el) => el.addEventListener('change', render));
+    loadAlerts();
+    setInterval(loadAlerts, 15000);
+  </script>
+</body>
+</html>

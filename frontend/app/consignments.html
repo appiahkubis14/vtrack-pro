@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Consignments & Stock | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Consignments & Stock</h4>
+        <p class="text-muted mb-0">Containers from China, the units inside them, and what each shipment earned.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="card mb-4"><div class="card-header fw-semibold">Consignments</div><div class="card-body p-0" id="cons-list"></div></div>    <div class="card mb-4"><div class="card-header fw-semibold">Vehicle models</div><div class="card-body p-0" id="models-list"></div></div>
+    <div class="card mt-4"><div class="card-header d-flex justify-content-between align-items-center"><span class="fw-semibold">Suppliers</span><button class="btn btn-sm btn-outline-primary" id="add-supplier">Add supplier</button></div><div class="card-body p-0" id="suppliers-list"></div></div>
+    <div class="modal fade" id="detailModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="detail-title"></h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detail-body"></div></div></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const canEdit = Biz.can(...Biz.ADMIN, 'fleet_manager');
+      const canMoney = Biz.can(...Biz.ADMIN, 'finance');
+      let models = [], suppliers = [];
+      const NEXT = { ordered: 'shipped', shipped: 'at_port', at_port: 'cleared', received: 'closed' };
+      const NEXT_LABEL = { shipped: 'Mark shipped', at_port: 'Arrived at port', cleared: 'Cleared customs', closed: 'Close' };
+
+      async function load() {
+        const [c, m, sp] = await Promise.all([VTrackAPI.get('/consignments'), VTrackAPI.get('/vehicle-models'), VTrackAPI.get('/suppliers')]);
+        models = m.data; suppliers = sp.data;
+        document.getElementById('cons-list').innerHTML = Biz.table([
+          { label: 'Reference', render: (r) => `<a href="#" data-act="view" data-id="${r.id}" class="fw-medium">${Biz.esc(r.reference)}</a>` },
+          { label: 'Supplier', render: (r) => Biz.esc(r.supplierName || '—') },
+          { label: 'Container', render: (r) => Biz.esc(r.containerNo || '—') },
+          { label: 'Status', render: (r) => Biz.badge(r.status) },
+          { label: 'Units', render: (r) => `${r.unitsRegistered} / ${r.unitsOrdered}` + (r.unitsWrittenOff ? ` <span class="text-muted fs-13">(${r.unitsWrittenOff} written off)</span>` : '') },
+          { label: 'Landed cost', cls: 'text-end', render: (r) => Biz.ghs(r.landedCostPesewas) },
+          { label: '', cls: 'text-end', render: (r) => {
+              let b = '';
+              if (canEdit && NEXT[r.status]) b += `<button class="btn btn-sm btn-outline-primary me-1" data-act="advance" data-id="${r.id}" data-to="${NEXT[r.status]}">${NEXT_LABEL[NEXT[r.status]]}</button>`;
+              if (canEdit && (r.status === 'cleared' || r.status === 'received') && r.unitsRegistered + r.unitsWrittenOff < r.unitsOrdered) b += `<button class="btn btn-sm btn-success me-1" data-act="receive" data-id="${r.id}">Receive units</button><button class="btn btn-sm btn-outline-danger" data-act="writeoff" data-id="${r.id}">Write off</button>`;
+              return b; } },
+        ], c.data, 'No consignments yet.');
+        document.getElementById('models-list').innerHTML = Biz.table([
+          { label: 'Brand', render: (r) => Biz.esc(r.brand) }, { label: 'Model', render: (r) => Biz.esc(r.name) },
+          { label: 'Type', render: (r) => Biz.label(r.vehicleType) }, { label: 'Battery', render: (r) => Biz.esc(r.batterySpec || '—') },
+          { label: 'List price', cls: 'text-end', render: (r) => Biz.ghs(r.listPricePesewas) },
+          { label: 'Active', render: (r) => (r.isActive ? 'Yes' : 'No') },
+        ], models, 'No vehicle models yet. Add one before recording a consignment.');
+        document.getElementById('suppliers-list').innerHTML = Biz.table([
+          { label: 'Supplier', render: (r) => `<span class="fw-medium">${Biz.esc(r.name)}</span>` }, { label: 'Country', render: (r) => Biz.esc(r.country || '—') },
+          { label: 'Contact', render: (r) => Biz.esc([r.contactName, r.phone, r.email].filter(Boolean).join(' · ') || '—') }, { label: 'Active', render: (r) => (r.isActive ? 'Yes' : 'No') },
+          { label: '', cls: 'text-end', render: (r) => canEdit ? `<button class="btn btn-sm btn-outline-secondary" data-act="edit-supplier" data-id="${r.id}">Edit</button>` : '' },
+        ], suppliers, 'No suppliers yet.');
+      }
+
+      if (canEdit) {
+        const a = document.createElement('button'); a.className = 'btn btn-outline-primary btn-sm'; a.textContent = 'Add vehicle model';
+        a.onclick = () => Biz.form({ title: 'Add a vehicle model', fields: [
+          { name: 'brand', label: 'Brand', required: true, col: 6 }, { name: 'name', label: 'Model', required: true, col: 6 },
+          { name: 'vehicleType', label: 'Type', type: 'select', required: true, options: [['ebike','E-bike'],['trike_passenger','Passenger trike'],['trike_goods','Goods trike (Aboboyaa)'],['trike_waste','Waste trike']].map(([v, l]) => ({ value: v, label: l })) },
+          { name: 'batterySpec', label: 'Battery', value: '72V 100Ah lithium' },
+          { name: 'listPricePesewas', label: 'List price', type: 'money' },
+        ], onSubmit: async (v) => { await VTrackAPI.post('/vehicle-models', v); Biz.toast('Model added'); load(); } });
+        const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-plus-lg me-1"></i>New consignment';
+        b.onclick = () => {
+          if (!models.length) return Biz.toast('Add a vehicle model first', 'warning');
+          Biz.form({ title: 'Record a consignment', intro: 'One model per consignment here; add further lines later if a container mixes models.', fields: [
+            { name: 'reference', label: 'Reference', required: true, col: 6 }, { name: 'containerNo', label: 'Container no.', col: 6 },
+            { name: 'supplierId', label: 'Supplier', type: 'select', col: 6, options: Biz.opts(suppliers, (x) => x.id, (x) => x.name), hint: 'Add suppliers at the bottom of this page.' }, { name: 'blNumber', label: 'Bill of lading no.', col: 6 },
+            { name: 'vehicleModelId', label: 'Model', type: 'select', required: true, options: Biz.opts(models, (m) => m.id, (m) => `${m.brand} ${m.name}`) },
+            { name: 'quantity', label: 'Units', type: 'number', required: true, col: 6 }, { name: 'unitCostPesewas', label: 'Cost per unit', type: 'money', required: true, col: 6 },
+            ...(canMoney ? [{ name: 'landedCostPesewas', label: 'Freight, duty and clearing (total)', type: 'money', hint: 'Can be added later once known.' }] : []),
+          ], onSubmit: async (v) => {
+            const { vehicleModelId, quantity, unitCostPesewas, ...rest } = v;
+            await VTrackAPI.post('/consignments', { ...rest, lines: [{ vehicleModelId, quantity, unitCostPesewas }] });
+            Biz.toast('Consignment recorded'); load();
+          } });
+        };
+        document.getElementById('page-actions').append(a, b);
+      }
+
+const supplierFields = (x = {}) => [
+        { name: 'name', label: 'Name', required: true, value: x.name }, { name: 'country', label: 'Country', value: x.country, col: 6 }, { name: 'contactName', label: 'Contact person', value: x.contactName, col: 6 },
+        { name: 'phone', label: 'Phone', value: x.phone, col: 6 }, { name: 'email', label: 'Email', value: x.email, col: 6 }, { name: 'notes', label: 'Notes', type: 'textarea', value: x.notes },
+      ];
+      if (canEdit) document.getElementById('add-supplier').onclick = () => Biz.form({ title: 'Add a supplier', fields: supplierFields(), onSubmit: async (v) => { await VTrackAPI.post('/suppliers', v); Biz.toast('Supplier added'); load(); } });
+      else document.getElementById('add-supplier').remove();
+
+      document.addEventListener('click', async (e) => {
+        const el = e.target.closest('[data-act]'); if (!el) return; e.preventDefault();
+        const id = el.dataset.id;
+        if (el.dataset.act === 'advance') {
+          if (!(await Biz.confirmAction(`Move this consignment to "${el.dataset.to.replace('_', ' ')}"? This cannot be undone.`))) return;
+          await Biz.run(() => VTrackAPI.post(`/consignments/${id}/advance`, { status: el.dataset.to }), 'Updated'); load();
+        }
+        if (el.dataset.act === 'receive') {
+          if (!(await Biz.confirmAction('Register every outstanding unit as a vehicle in stock?'))) return;
+          const r = await Biz.run(() => VTrackAPI.post(`/consignments/${id}/receive`, {})); if (r) Biz.toast(`${r.data.registered} unit(s) registered`); load();
+        }
+        if (el.dataset.act === 'edit-supplier') {
+          const x = suppliers.find((q) => q.id === id);
+          Biz.form({ title: `Edit ${x.name}`, fields: [...supplierFields(x), { name: 'isActive', label: 'Active', type: 'checkbox', value: x.isActive }], onSubmit: async (v) => { await VTrackAPI.put(`/suppliers/${id}`, v); Biz.toast('Supplier updated'); load(); } });
+        }
+        if (el.dataset.act === 'writeoff') {
+          const r = await Biz.run(() => VTrackAPI.get(`/consignments/${id}`)); if (!r) return;
+          const lines = r.data.lines.filter((l) => l.quantity - l.unitsRegistered - l.unitsWrittenOff > 0);
+          Biz.form({ title: `Write off units from ${r.data.reference}`, intro: 'For units that never arrived or arrived unusable. A reason is required and a write-off cannot be undone.', submitLabel: 'Write off', fields: [
+            { name: 'lineId', label: 'Line', type: 'select', required: true, options: lines.map((l) => ({ value: l.id, label: `${l.vehicleModel?.brand ?? ''} ${l.vehicleModel?.name ?? ''} - ${l.quantity - l.unitsRegistered - l.unitsWrittenOff} outstanding` })) },
+            { name: 'units', label: 'Units', type: 'number', required: true, value: 1, col: 4 }, { name: 'reason', label: 'Reason', type: 'textarea', required: true, col: 12 },
+          ], onSubmit: async (v) => { await VTrackAPI.post(`/consignments/${id}/write-offs`, v); Biz.toast('Units written off'); load(); } });
+        }
+        if (el.dataset.act === 'view') {
+          const r = await Biz.run(() => VTrackAPI.get(`/consignments/${id}`)); if (!r) return;
+          const c = r.data;
+          let profit = '';
+          if (canMoney) { const p = await VTrackAPI.get(`/consignments/${id}/profitability`).catch(() => null); if (p) { const x = p.data;
+            profit = `<h6 class="mt-4">Profitability</h6><div class="row g-3">${Biz.stat('Total cost', Biz.ghs(x.totalCostPesewas), `${Biz.ghs(x.costPerUnitPesewas)} per unit`)}${Biz.stat('Contracted revenue', Biz.ghs(x.revenueContractedPesewas), `${x.unitsSold} of ${x.unitsOrdered} sold`)}${Biz.stat('Margin so far', Biz.ghs(x.marginPesewas))}</div><p class="text-muted fs-13 mt-2">${Biz.esc(x.note)}</p>`; } }
+          document.getElementById('detail-title').textContent = `Consignment ${c.reference}`;
+          document.getElementById('detail-body').innerHTML = `<p>${Biz.badge(c.status)} ${Biz.esc(c.supplierName || '')} ${c.containerNo ? '· container ' + Biz.esc(c.containerNo) : ''}</p>` +
+            Biz.table([{ label: 'Model', render: (l) => Biz.esc(`${l.vehicleModel?.brand ?? ''} ${l.vehicleModel?.name ?? ''}`) }, { label: 'Ordered', render: (l) => l.quantity }, { label: 'Registered', render: (l) => l.unitsRegistered }, { label: 'Written off', render: (l) => l.unitsWrittenOff }, { label: 'Unit cost', cls: 'text-end', render: (l) => Biz.ghs(l.unitCostPesewas) }], c.lines) + profit;
+          new bootstrap.Modal(document.getElementById('detailModal')).show();
+        }
+      });
+      Biz.run(load);
+    });
+
+  </script>
+</body>
+</html>

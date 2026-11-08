@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vehicle history | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+  <link rel="stylesheet" href="js/vendor/leaflet/leaflet.css">
+  <style>
+    .vh-hero { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .vh-plate { font-weight: 700; font-size: 1.6rem; letter-spacing: .02em; }
+    .vh-kpi .v { font-size: 1.5rem; font-weight: 700; line-height: 1.15; }
+    .vh-kpi .s { font-size: .78rem; color: var(--bs-secondary-color); }
+    .vh-insight { display: flex; gap: .6rem; align-items: flex-start; padding: .55rem .75rem; border-radius: .6rem; background: var(--bs-tertiary-bg); margin-bottom: .45rem; font-size: .9rem; }
+    .vh-insight i { margin-top: .15rem; }
+    .vh-tl { position: relative; padding-left: 1.9rem; }
+    .vh-tl::before { content: ""; position: absolute; left: .72rem; top: .3rem; bottom: .3rem; width: 2px; background: var(--bs-border-color); }
+    .vh-ev { position: relative; padding: .1rem 0 .95rem; }
+    .vh-ev .dot { position: absolute; left: -1.9rem; top: .05rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; color: #fff; box-shadow: 0 0 0 3px var(--bs-body-bg); }
+    .vh-day { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--bs-secondary-color); font-weight: 700; margin: .4rem 0 .6rem; }
+    #vh-map { height: 280px; border-radius: .6rem; }
+    .vh-chips .btn { margin: 0 .25rem .35rem 0; }
+    .vh-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 70px; }
+    .vh-hours div { background: var(--bs-primary); border-radius: 2px 2px 0 0; min-height: 2px; opacity: .85; }
+    .vh-hourlbl { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; font-size: .62rem; color: var(--bs-secondary-color); text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <a href="vehicles.html" class="text-muted fs-13 text-decoration-none"><i class="bi bi-arrow-left"></i> All vehicles</a>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mt-2 mb-4">
+      <div class="vh-hero">
+        <div><div class="vh-plate" id="vh-plate">Loading…</div><div class="text-muted" id="vh-sub"></div></div>
+        <div id="vh-badges" class="d-flex gap-2 flex-wrap"></div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <div class="btn-group btn-group-sm" id="vh-range" role="group" aria-label="Period">
+          <button class="btn btn-outline-secondary" data-days="7">7 days</button>
+          <button class="btn btn-outline-secondary active" data-days="30">30 days</button>
+          <button class="btn btn-outline-secondary" data-days="90">90 days</button>
+          <button class="btn btn-outline-secondary" data-days="365">1 year</button>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" id="vh-live" href="live-map.html"><i class="bi bi-geo-alt me-1"></i>Live map</a>
+        <button class="btn btn-sm btn-outline-secondary" id="vh-print"><i class="bi bi-printer me-1"></i>Print</button>
+      </div>
+    </div>
+
+    <div id="vh-error" class="alert alert-danger d-none"></div>
+    <div id="vh-privacy" class="alert alert-info d-none"><i class="bi bi-shield-lock me-1"></i>Driver privacy is on for this vehicle: movement outside working hours is not shown.</div>
+
+    <div class="row g-3 mb-3" id="vh-kpis"></div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-lg-8"><div class="card h-100"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2"><h6 class="mb-0">Distance and collections, day by day</h6><div class="btn-group btn-group-sm" id="vh-metric"><button class="btn btn-outline-secondary active" data-m="km">Distance</button><button class="btn btn-outline-secondary" data-m="collected">Collected</button><button class="btn btn-outline-secondary" data-m="movingMin">Time moving</button></div></div>
+        <div style="height:240px"><canvas id="vh-chart"></canvas></div>
+      </div></div></div>
+      <div class="col-lg-4"><div class="card h-100"><div class="card-body">
+        <h6 class="mb-2">What stands out</h6><div id="vh-insights"></div>
+      </div></div></div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-lg-7"><div class="card h-100"><div class="card-body">
+        <h6 class="mb-2">Route driven</h6><div id="vh-map"></div><div class="text-muted fs-13 mt-2" id="vh-map-note"></div>
+      </div></div></div>
+      <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+        <h6 class="mb-2">When it is used</h6>
+        <div class="text-muted fs-13 mb-2">Minutes moving in each hour of the day</div>
+        <div class="vh-hours" id="vh-hours"></div><div class="vh-hourlbl" id="vh-hourlbl"></div>
+        <hr><h6 class="mb-2">Alerts by type</h6><div id="vh-alert-types" class="fs-13"></div>
+        <hr><h6 class="mb-2">Details</h6><div id="vh-facts" class="fs-13"></div>
+      </div></div></div>
+    </div>
+
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <h6 class="mb-0">Activity timeline</h6>
+        <input type="search" id="vh-search" class="form-control form-control-sm" style="max-width:260px" placeholder="Search the timeline" aria-label="Search the timeline">
+      </div>
+      <div class="vh-chips mb-2" id="vh-chips"></div>
+      <div class="vh-tl" id="vh-tl"></div>
+      <div class="text-center mt-2"><button class="btn btn-outline-secondary btn-sm d-none" id="vh-more">Show older activity</button></div>
+    </div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vendor/chart.umd.min.js"></script>
+  <script src="js/vendor/leaflet/leaflet.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+    Biz.start(() => {
+      const { esc, ghs } = Biz;
+      const id = new URLSearchParams(location.search).get('id');
+      const KINDS = {
+        trip: ['Trips', 'bi-signpost-split', '#0d6efd'], alert: ['Alerts', 'bi-exclamation-triangle-fill', '#dc3545'], maintenance: ['Maintenance', 'bi-wrench-adjustable', '#6f42c1'],
+        rider: ['Riders', 'bi-person-fill', '#0aa56a'], battery: ['Battery', 'bi-battery-charging', '#fd7e14'], collection: ['Money', 'bi-cash-coin', '#198754'],
+        lock: ['Locks', 'bi-lock-fill', '#b02a37'], zone: ['Zones', 'bi-bullseye', '#0dcaf0'], task: ['Checklists', 'bi-check2-square', '#20c997'],
+        theft: ['Theft', 'bi-shield-exclamation', '#842029'], contract: ['Contract', 'bi-file-earmark-text', '#6c757d'], device: ['Tracker', 'bi-cpu', '#0d6efd'], record: ['Record', 'bi-pencil-square', '#6c757d'],
+      };
+      const SEV = { critical: ['danger', 'bi-x-octagon-fill'], warning: ['warning', 'bi-exclamation-triangle-fill'], info: ['info', 'bi-info-circle-fill'], good: ['success', 'bi-check-circle-fill'] };
+      let days = 30, data = null, events = [], next = null, kind = '', q = '', metric = 'km', chart = null, map = null, mapLayer = null;
+      if (!id) { document.getElementById('vh-error').textContent = 'No vehicle chosen. Open a vehicle from the Vehicles list.'; document.getElementById('vh-error').classList.remove('d-none'); document.getElementById('vh-plate').textContent = 'Vehicle history'; return; }
+      const fmtDate = (d) => new Date(d).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+      const hm = (h) => (h >= 1 ? `${h.toFixed(1)} h` : `${Math.round(h * 60)} min`);
+
+      function kpi(label, value, sub, cls) { return `<div class="col-6 col-md-4 col-xl-2"><div class="card h-100 vh-kpi"><div class="card-body py-3"><div class="text-muted fs-13">${label}</div><div class="v ${cls || ''}">${value}</div><div class="s">${sub || ''}</div></div></div></div>`; }
+      function render() {
+        const v = data.vehicle, t = data.totals;
+        document.title = `${v.plateNumber} history | V-Track Pro`;
+        document.getElementById('vh-plate').textContent = v.plateNumber;
+        document.getElementById('vh-sub').textContent = [v.make, v.model, v.year, v.color].filter(Boolean).join(' · ') || 'Vehicle';
+        document.getElementById('vh-badges').innerHTML = Biz.badge(v.lifecycleStatus) + (v.hubName ? `<span class="badge bg-secondary-subtle text-secondary-emphasis">${esc(v.hubName)}</span>` : '') + (v.currentRider ? `<span class="badge bg-primary-subtle text-primary-emphasis"><i class="bi bi-person-fill me-1"></i>${esc(v.currentRider)}</span>` : '');
+        document.getElementById('vh-privacy').classList.toggle('d-none', !data.privacy);
+        const ch = t.distanceChangePct;
+        const trend = ch == null ? '' : ch >= 0 ? `<span class="text-success">▲ ${ch}%</span> vs before` : `<span class="text-danger">▼ ${-ch}%</span> vs before`;
+        document.getElementById('vh-kpis').innerHTML =
+          kpi('Distance', `${t.distanceKm} km`, trend || `${t.trips} trip${t.trips === 1 ? '' : 's'}`) +
+          kpi('Time moving', hm(t.movingHours), `idle ${hm(t.idleHours)}`) +
+          kpi('Days in use', `${t.activeDays}`, `${t.utilisationPct}% of the period`, t.utilisationPct < 30 ? 'text-warning' : '') +
+          kpi('Speed', `${t.avgSpeedKmh} km/h`, `top ${t.maxSpeedKmh} km/h`, t.maxSpeedKmh > 70 ? 'text-warning' : '') +
+          kpi('Collected', ghs(t.collectedPesewas), t.collectedPerKmPesewas ? `${ghs(t.collectedPerKmPesewas)} per km` : '') +
+          kpi('Alerts', t.alerts, `${t.highAlerts} serious, ${t.openAlerts} open`, t.highAlerts ? 'text-danger' : '') +
+          kpi('Maintenance', t.maintenanceJobs, t.maintenanceCost ? `cost ${ghs(t.maintenanceCost * 100)}` : 'jobs') +
+          kpi('Battery swaps', t.batterySwaps, data.battery ? `fitted ${esc(data.battery.serialNo)}${data.battery.healthPct != null ? `, ${Math.round(data.battery.healthPct)}%` : ''}` : 'no battery fitted') +
+          kpi('Locks', `${t.locks} / ${t.unlocks}`, 'locked / unlocked') +
+          kpi('Zones', `${t.zoneEntries} in`, `${t.zoneExits} out`) +
+          kpi('Checklists', t.tasksTotal ? `${t.tasksDone}/${t.tasksTotal}` : '—', 'done') +
+          kpi('Odometer', v.odometer == null ? '—' : `${Math.round(v.odometer).toLocaleString()} km`, 'recorded total');
+        document.getElementById('vh-insights').innerHTML = data.insights.map((i) => `<div class="vh-insight"><i class="bi ${SEV[i.level][1]} text-${SEV[i.level][0]}"></i><div>${esc(i.text)}</div></div>`).join('');
+        const max = Math.max(1, ...data.hourlyMovingMin);
+        document.getElementById('vh-hours').innerHTML = data.hourlyMovingMin.map((m, h) => `<div title="${String(h).padStart(2, '0')}:00, ${m} min moving" style="height:${Math.max(3, Math.round((m / max) * 66))}px"></div>`).join('');
+        document.getElementById('vh-hourlbl').innerHTML = data.hourlyMovingMin.map((m, h) => `<span>${h % 6 === 0 ? h : ''}</span>`).join('');
+        document.getElementById('vh-alert-types').innerHTML = data.alertsByType.length ? data.alertsByType.map((a) => `<div class="d-flex justify-content-between"><span class="text-truncate">${esc(Biz.label ? Biz.label(a.type) : a.type)}</span><b>${a.count}</b></div>`).join('') : '<span class="text-muted">No alerts in this period.</span>';
+        const fact = (k, val) => val ? `<div class="d-flex justify-content-between gap-2"><span class="text-muted">${k}</span><span class="text-end">${val}</span></div>` : '';
+        const exp = (d) => { if (!d) return ''; const n = Math.ceil((new Date(d) - Date.now()) / 864e5); return `${fmtDate(d)} <span class="text-${n < 0 ? 'danger' : n <= 30 ? 'warning' : 'muted'}">(${n < 0 ? `${-n} d ago` : `${n} d left`})</span>`; };
+        document.getElementById('vh-facts').innerHTML = fact('Owner', esc(v.ownerName || '')) + fact('Contract', data.contract ? `${esc(data.contract.contractNo)} · ${esc(data.contract.status)}` : '') + fact('Chassis', esc(v.chassisNo || '')) + fact('Motor', esc(v.motorNo || '')) + fact('Registered here', fmtDate(v.registeredAt)) +
+          fact('Insurance', exp(v.insuranceExpiry)) + fact('Registration', exp(v.registrationExpiry)) + fact('Inspection', exp(v.inspectionDue)) +
+          data.devices.map((d) => fact('Tracker', `${esc(d.name || d.imei)} · ${esc(d.status)}${d.batteryLevel != null ? ` · ${d.batteryLevel}%` : ''}`)).join('') +
+          (data.riders.length ? fact('Riders so far', data.riders.map((r) => esc(r.name)).join(', ')) : '');
+        drawChart();
+      }
+      function drawChart() {
+        const rows = data.daily, label = { km: 'Distance (km)', collected: 'Collected (GH₵)', movingMin: 'Minutes moving' }[metric];
+        const vals = rows.map((r) => (metric === 'collected' ? r.collected / 100 : r[metric]));
+        if (chart) chart.destroy();
+        Chart.defaults.color = getComputedStyle(document.body).color;
+        chart = new Chart(document.getElementById('vh-chart'), { type: 'bar', data: { labels: rows.map((r) => new Date(r.date + 'T00:00').toLocaleDateString([], { day: '2-digit', month: 'short' })), datasets: [{ label, data: vals, backgroundColor: metric === 'collected' ? 'rgba(25,135,84,.75)' : 'rgba(13,110,253,.75)', borderRadius: 3 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,.15)' } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } } } } });
+      }
+      async function drawRoute() {
+        if (!window.L) return;
+        const r = (await VTrackAPI.get(`/vehicles/${id}/history/route?days=${days}`)).data;
+        if (!map) { map = L.map('vh-map', { zoomControl: true, attributionControl: true }); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map); map.setView([5.6, -0.19], 11); }
+        if (mapLayer) mapLayer.remove();
+        mapLayer = L.layerGroup().addTo(map);
+        const all = [];
+        r.segments.forEach((s) => { L.polyline(s, { color: '#0d6efd', weight: 4, opacity: .85 }).addTo(mapLayer); all.push(...s); });
+        if (all.length) { L.circleMarker(all[0], { radius: 7, color: '#198754', fillColor: '#198754', fillOpacity: 1 }).bindTooltip('Start').addTo(mapLayer); L.circleMarker(all[all.length - 1], { radius: 7, color: '#dc3545', fillColor: '#dc3545', fillOpacity: 1 }).bindTooltip('Latest').addTo(mapLayer); map.fitBounds(L.latLngBounds(all), { padding: [20, 20], maxZoom: 16 }); }
+        document.getElementById('vh-map-note').textContent = all.length ? `${r.segments.length} stretch${r.segments.length === 1 ? '' : 'es'} of travel shown. Gaps are times the tracker was silent.` : 'No movement recorded in this period.';
+        setTimeout(() => map.invalidateSize(), 100);
+      }
+
+      // ---- timeline ----
+      function drawChips(kinds) {
+        document.getElementById('vh-chips').innerHTML = `<button class="btn btn-sm ${kind ? 'btn-outline-secondary' : 'btn-primary'}" data-k="">All</button>` + Object.entries(KINDS).map(([k, [name, icon]]) => `<button class="btn btn-sm ${kind === k ? 'btn-primary' : 'btn-outline-secondary'}" data-k="${k}"><i class="bi ${icon} me-1"></i>${name}</button>`).join('');
+      }
+      function drawTimeline() {
+        const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+        const list = events.filter((e) => words.every((w) => `${e.title} ${e.detail || ''} ${KINDS[e.kind][0]}`.toLowerCase().includes(w)));
+        const el = document.getElementById('vh-tl');
+        if (!list.length) { el.innerHTML = `<div class="text-muted py-4">${events.length ? 'No matching entries.' : 'Nothing recorded for this period.'}</div>`; return; }
+        let lastDay = '', html = '';
+        for (const e of list) {
+          const d = new Date(e.at), day = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+          if (day !== lastDay) { html += `<div class="vh-day">${day}</div>`; lastDay = day; }
+          const [name, icon, color] = KINDS[e.kind];
+          const sev = e.severity && e.severity !== 'info' ? ` <span class="badge bg-${SEV[e.severity][0]}-subtle text-${SEV[e.severity][0]}-emphasis">${e.severity === 'good' ? 'ok' : e.severity}</span>` : '';
+          html += `<div class="vh-ev"><span class="dot" style="background:${color}"><i class="bi ${icon}"></i></span><div class="d-flex justify-content-between gap-2"><div class="fw-medium">${esc(e.title)}${sev}</div><div class="text-muted fs-13 text-nowrap">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>${e.detail ? `<div class="text-muted fs-13">${esc(e.detail)}</div>` : ''}</div>`;
+        }
+        el.innerHTML = html;
+        document.getElementById('vh-more').classList.toggle('d-none', !next);
+      }
+      async function loadEvents(more) {
+        const qs = new URLSearchParams({ days, limit: 60 }); if (kind) qs.set('types', kind); if (more && next) qs.set('before', next);
+        const r = (await VTrackAPI.get(`/vehicles/${id}/history/events?${qs}`)).data;
+        events = more ? events.concat(r.events) : r.events; next = r.next; drawChips(); drawTimeline();
+      }
+      async function load() {
+        document.getElementById('vh-error').classList.add('d-none');
+        try {
+          data = (await VTrackAPI.get(`/vehicles/${id}/history?days=${days}`)).data; render();
+          await Promise.all([loadEvents(false), drawRoute()]);
+        } catch (e) { document.getElementById('vh-error').textContent = e.message || 'Could not load this vehicle.'; document.getElementById('vh-error').classList.remove('d-none'); }
+      }
+      document.getElementById('vh-range').addEventListener('click', (e) => { const b = e.target.closest('[data-days]'); if (!b) return; days = +b.dataset.days; document.querySelectorAll('#vh-range .btn').forEach((x) => x.classList.toggle('active', x === b)); Biz.run(load); });
+      document.getElementById('vh-metric').addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b) return; metric = b.dataset.m; document.querySelectorAll('#vh-metric .btn').forEach((x) => x.classList.toggle('active', x === b)); if (data) drawChart(); });
+      document.getElementById('vh-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (!b) return; kind = b.dataset.k; Biz.run(() => loadEvents(false)); });
+      document.getElementById('vh-search').addEventListener('input', (e) => { q = e.target.value; drawTimeline(); });
+      document.getElementById('vh-more').addEventListener('click', () => Biz.run(() => loadEvents(true)));
+      document.getElementById('vh-print').addEventListener('click', () => window.print());
+      document.addEventListener('vtrack-theme', () => data && drawChart());
+      Biz.run(load);
+    });
+  </script>
+</body>
+</html>

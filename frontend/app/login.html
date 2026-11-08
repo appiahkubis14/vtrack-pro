@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--dx-tertiary-bg); }
+    .login-card { width: 100%; max-width: 400px; }
+  </style>
+</head>
+<body>
+  <div class="login-card card shadow-sm">
+    <div class="card-body p-5">
+      <div class="text-center mb-4">
+        <i class="bi bi-signpost-split text-primary" style="font-size: 2.5rem;"></i>
+        <h4 class="fw-bold mt-2 mb-0">V-Track Pro</h4>
+        <p class="text-muted fs-13">Sign in to your fleet dashboard</p>
+      </div>
+
+      <div id="login-error" class="alert alert-danger d-none" role="alert"></div>
+
+      <form id="login-form">
+        <div class="mb-3">
+          <label class="form-label" for="email">Email</label>
+          <input type="email" class="form-control" id="email" required autocomplete="username" value="admin@vtrack.local">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="password">Password</label>
+          <input type="password" class="form-control" id="password" required autocomplete="current-password">
+        </div>
+        <div class="mb-3" id="totp-group" style="display:none;">
+          <label class="form-label" for="totp">2FA code</label>
+          <input type="text" class="form-control" id="totp" inputmode="numeric" maxlength="6" placeholder="123456">
+        </div>
+        <button type="submit" class="btn btn-primary w-100" id="login-btn">
+          <span id="login-btn-text">Sign in</span>
+          <span id="login-spinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/vtrack-api.js"></script>
+  <script>
+    // Already signed in? Skip straight to the dashboard.
+    if (window.VTrackAPI.isAuthed()) {
+      window.location.href = window.VTrackAPI.homeFor(window.VTrackAPI.getUser());
+    }
+
+    const form = document.getElementById('login-form');
+    const errorBox = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+    const btnText = document.getElementById('login-btn-text');
+    const spinner = document.getElementById('login-spinner');
+    const totpGroup = document.getElementById('totp-group');
+
+    function setLoading(loading) {
+      btn.disabled = loading;
+      spinner.classList.toggle('d-none', !loading);
+      btnText.textContent = loading ? 'Signing in...' : 'Sign in';
+    }
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.classList.remove('d-none');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorBox.classList.add('d-none');
+      setLoading(true);
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const totp = document.getElementById('totp').value.trim();
+
+      try {
+        const session = await window.VTrackAPI.login(email, password, totp || undefined);
+        const params = new URLSearchParams(window.location.search);
+        const home = window.VTrackAPI.homeFor(session.user);
+        // only follow ?next= for a page on this site; an account that must change its password goes there first
+        const next = params.get('next');
+        window.location.href = home === 'change-password.html' ? home : (next && /^(?!\/\/)\/?[\w\/.\-]+\.html(\?.*)?$/.test(next) ? next : home);
+      } catch (err) {
+        // The backend asks for a 2FA code with a specific message when the
+        // account has TOTP enabled - surface the field instead of a dead end.
+        if (/two-factor/i.test(err.message)) {
+          totpGroup.style.display = 'block';
+          showError('Enter your 2FA code to continue.');
+        } else {
+          showError(err.message || 'Login failed');
+        }
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

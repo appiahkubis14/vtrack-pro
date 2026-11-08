@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roaming & Borders | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Roaming & Border Crossings</h4>
+        <p class="text-muted mb-0">SIM profiles, cross-border activity, and travel corridors</p>
+      </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="roamingTabs">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-sims">SIM Profiles</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-crossings">Border Crossings</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-corridors">Travel Corridors</button></li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- SIM Profiles -->
+      <div class="tab-pane fade show active" id="tab-sims">
+        <div class="d-flex justify-content-end mb-3">
+          <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#simModal"><i class="bi bi-plus-lg me-1"></i>Register SIM</button>
+        </div>
+        <div class="card">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead><tr><th class="ps-4">ICCID</th><th>Provider</th><th>Type</th><th>Roaming</th><th>Allowed Countries</th><th>Status</th></tr></thead>
+                <tbody id="sims-table-body"><tr><td colspan="6" class="text-center text-muted py-5">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Border Crossings -->
+      <div class="tab-pane fade" id="tab-crossings">
+        <div class="card">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead><tr><th class="ps-4">Route</th><th>Location</th><th>Authorized</th><th>Crossed At</th></tr></thead>
+                <tbody id="crossings-table-body"><tr><td colspan="4" class="text-center text-muted py-5">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Travel Corridors -->
+      <div class="tab-pane fade" id="tab-corridors">
+        <div class="d-flex justify-content-end mb-3">
+          <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#corridorModal"><i class="bi bi-plus-lg me-1"></i>Define Corridor</button>
+        </div>
+        <div class="card">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead><tr><th class="ps-4">Name</th><th>Route</th><th>Expected Countries</th><th>Max Dwell</th></tr></thead>
+                <tbody id="corridors-table-body"><tr><td colspan="4" class="text-center text-muted py-5">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- SIM Modal -->
+  <div class="modal fade" id="simModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="sim-form">
+          <div class="modal-header"><h5 class="modal-title">Register SIM Profile</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div id="sim-error" class="alert alert-danger d-none"></div>
+            <label class="form-label">ICCID</label>
+            <input type="text" class="form-control mb-2" id="s-iccid" required>
+            <label class="form-label">Provider</label>
+            <input type="text" class="form-control mb-2" id="s-provider" placeholder="MTN Ghana">
+            <label class="form-label">SIM Type</label>
+            <select class="form-select mb-2" id="s-type">
+              <option value="local">Local</option>
+              <option value="multi_network">Multi-Network</option>
+              <option value="regional">Regional</option>
+              <option value="global">Global</option>
+              <option value="esim">eSIM</option>
+              <option value="iot_sim">IoT SIM</option>
+            </select>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="s-roaming">
+              <label class="form-check-label" for="s-roaming">Roaming enabled</label>
+            </div>
+            <label class="form-label">Allowed Countries (comma-separated ISO codes)</label>
+            <input type="text" class="form-control" id="s-allowed" placeholder="GH, TG, CI">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="sim-submit">Register</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Corridor Modal -->
+  <div class="modal fade" id="corridorModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="corridor-form">
+          <div class="modal-header"><h5 class="modal-title">Define Travel Corridor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div id="corridor-error" class="alert alert-danger d-none"></div>
+            <label class="form-label">Corridor Name</label>
+            <input type="text" class="form-control mb-2" id="c-name" placeholder="Accra-Lagos Trade Corridor" required>
+            <div class="row g-2 mb-2">
+              <div class="col-6"><label class="form-label">Origin Country</label><input type="text" class="form-control" id="c-origin" maxlength="2" placeholder="GH" required></div>
+              <div class="col-6"><label class="form-label">Destination Country</label><input type="text" class="form-control" id="c-destination" maxlength="2" placeholder="NG" required></div>
+            </div>
+            <label class="form-label">Expected Countries (comma-separated, in order)</label>
+            <input type="text" class="form-control mb-2" id="c-expected" placeholder="GH, TG, BJ, NG" required>
+            <label class="form-label">Max Border Dwell (minutes)</label>
+            <input type="number" class="form-control" id="c-dwell" value="240">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="corridor-submit">Create Corridor</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-tables.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    async function loadSims() {
+      const res = await window.VTrackAPI.get('/sim-profiles');
+      const sims = res.data;
+      const tbody = document.getElementById('sims-table-body');
+      tbody.innerHTML = sims.length
+        ? sims
+            .map(
+              (s) => `
+        <tr>
+          <td class="ps-4 font-monospace fs-13">${s.iccid ?? '—'}</td>
+          <td>${s.provider ?? '—'}</td>
+          <td class="text-capitalize fs-13">${s.simType.replace(/_/g, ' ')}</td>
+          <td>${s.roamingEnabled ? '<span class="badge bg-success-subtle text-success">Enabled</span>' : '<span class="badge bg-secondary-subtle text-secondary">Disabled</span>'}</td>
+          <td class="fs-13">${(s.allowedCountries ?? []).join(', ') || 'Any'}</td>
+          <td><span class="badge bg-primary-subtle text-primary text-capitalize">${s.status}</span></td>
+        </tr>`,
+            )
+            .join('')
+        : '<tr><td colspan="6" class="text-center text-muted py-5">No SIM profiles registered yet.</td></tr>';
+    }
+
+    async function loadCrossings() {
+      const res = await window.VTrackAPI.get('/border-crossings');
+      const crossings = res.data;
+      const tbody = document.getElementById('crossings-table-body');
+      tbody.innerHTML = crossings.length
+        ? crossings
+            .map(
+              (c) => `
+        <tr>
+          <td class="ps-4">${c.fromCountry ?? '?'} <i class="bi bi-arrow-right mx-1"></i> <strong>${c.toCountry}</strong></td>
+          <td class="fs-13 text-muted">${Number(c.latitude).toFixed(4)}, ${Number(c.longitude).toFixed(4)}</td>
+          <td>${c.isAuthorized ? '<span class="badge bg-success-subtle text-success">Authorized</span>' : '<span class="badge bg-danger-subtle text-danger">Unauthorized</span>'}</td>
+          <td class="fs-13 text-muted">${new Date(c.crossedAt).toLocaleString()}</td>
+        </tr>`,
+            )
+            .join('')
+        : '<tr><td colspan="4" class="text-center text-muted py-5">No border crossings recorded yet.</td></tr>';
+    }
+
+    async function loadCorridors() {
+      const res = await window.VTrackAPI.get('/travel-corridors');
+      const corridors = res.data;
+      const tbody = document.getElementById('corridors-table-body');
+      tbody.innerHTML = corridors.length
+        ? corridors
+            .map(
+              (c) => `
+        <tr>
+          <td class="ps-4 fw-medium">${c.name}</td>
+          <td>${c.originCountry} <i class="bi bi-arrow-right mx-1"></i> ${c.destinationCountry}</td>
+          <td class="fs-13">${c.expectedCountries.join(' → ')}</td>
+          <td class="fs-13 text-muted">${c.maxBorderDwellMinutes} min</td>
+        </tr>`,
+            )
+            .join('')
+        : '<tr><td colspan="4" class="text-center text-muted py-5">No corridors defined yet.</td></tr>';
+    }
+
+    document.getElementById('sim-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('sim-error');
+      errorBox.classList.add('d-none');
+      const submitBtn = document.getElementById('sim-submit');
+      submitBtn.disabled = true;
+      try {
+        const allowed = document.getElementById('s-allowed').value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+        await window.VTrackAPI.post('/sim-profiles', {
+          iccid: document.getElementById('s-iccid').value,
+          provider: document.getElementById('s-provider').value || undefined,
+          simType: document.getElementById('s-type').value,
+          roamingEnabled: document.getElementById('s-roaming').checked,
+          allowedCountries: allowed.length ? allowed : undefined,
+        });
+        bootstrap.Modal.getInstance(document.getElementById('simModal')).hide();
+        document.getElementById('sim-form').reset();
+        loadSims();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('corridor-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('corridor-error');
+      errorBox.classList.add('d-none');
+      const submitBtn = document.getElementById('corridor-submit');
+      submitBtn.disabled = true;
+      try {
+        const expected = document.getElementById('c-expected').value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+        await window.VTrackAPI.post('/travel-corridors', {
+          name: document.getElementById('c-name').value,
+          originCountry: document.getElementById('c-origin').value.toUpperCase(),
+          destinationCountry: document.getElementById('c-destination').value.toUpperCase(),
+          expectedCountries: expected,
+          maxBorderDwellMinutes: Number(document.getElementById('c-dwell').value),
+        });
+        bootstrap.Modal.getInstance(document.getElementById('corridorModal')).hide();
+        document.getElementById('corridor-form').reset();
+        loadCorridors();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    loadSims();
+    loadCrossings();
+    loadCorridors();
+  </script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leads | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Leads</h4>
+        <p class="text-muted mb-0" id="leads-subtitle">Loading...</p>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <input type="radio" class="btn-check" name="statusFilter" id="filter-all" checked>
+        <label class="btn btn-outline-secondary" for="filter-all">All</label>
+        <input type="radio" class="btn-check" name="statusFilter" id="filter-new" data-status="new">
+        <label class="btn btn-outline-secondary" for="filter-new">New</label>
+        <input type="radio" class="btn-check" name="statusFilter" id="filter-quoted" data-status="quote_sent">
+        <label class="btn btn-outline-secondary" for="filter-quoted">Quote Sent</label>
+        <input type="radio" class="btn-check" name="statusFilter" id="filter-won" data-status="won">
+        <label class="btn btn-outline-secondary" for="filter-won">Won</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Contact</th>
+                <th>Company</th>
+                <th>Fleet Size</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th class="pe-4 text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="leads-table-body">
+              <tr><td colspan="7" class="text-center text-muted py-5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Lead Detail / Status Modal -->
+  <div class="modal fade" id="leadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="leadModalTitle">Lead</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="lead-detail-body"></div>
+          <hr>
+          <h6 class="fw-semibold">History</h6>
+          <div id="lead-history" class="fs-13"></div>
+        </div>
+        <div class="modal-footer flex-wrap gap-2 justify-content-start" id="lead-status-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-tables.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    const statusColor = {
+      new: 'secondary', contacted: 'info', qualified: 'info', quote_sent: 'primary',
+      negotiating: 'warning', won: 'success', lost: 'danger', archived: 'secondary',
+    };
+
+    // Transitions the backend's LeadsService actually allows (kept in sync
+    // with modules/commercial/leads.service.ts's VALID_TRANSITIONS table).
+    const TRANSITIONS = {
+      new: ['contacted', 'qualified', 'quote_sent', 'won', 'lost', 'archived'],
+      contacted: ['qualified', 'quote_sent', 'won', 'lost', 'archived'],
+      qualified: ['quote_sent', 'won', 'lost'],
+      quote_sent: ['negotiating', 'won', 'lost'],
+      negotiating: ['won', 'lost', 'quote_sent'],
+      won: ['archived'],
+      lost: ['archived', 'contacted'],
+      archived: [],
+    };
+
+    let allLeads = [];
+    let leadModal;
+
+    function activeFilter() {
+      const checked = document.querySelector('input[name="statusFilter"]:checked');
+      return checked?.dataset.status;
+    }
+
+    function render() {
+      const filter = activeFilter();
+      const rows = filter ? allLeads.filter((l) => l.status === filter) : allLeads;
+      const tbody = document.getElementById('leads-table-body');
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5">No leads here.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows
+        .map((l) => {
+          const color = statusColor[l.status] || 'secondary';
+          return `
+        <tr style="cursor:pointer" class="lead-row" data-id="${l.id}">
+          <td class="ps-4">
+            <div class="fw-medium">${l.contactName}</div>
+            <div class="text-muted fs-13">${l.phone ?? l.email ?? ''}</div>
+          </td>
+          <td>${l.companyName ?? '—'}</td>
+          <td>${l.fleetSize ?? '—'}</td>
+          <td class="fs-13 text-capitalize">${(l.sourceChannel ?? '—').replace(/_/g, ' ')}</td>
+          <td><span class="badge bg-${color}-subtle text-${color} text-capitalize">${l.status.replace(/_/g, ' ')}</span></td>
+          <td class="fs-13 text-muted">${new Date(l.createdAt).toLocaleDateString()}</td>
+          <td class="pe-4 text-end"><i class="bi bi-chevron-right text-muted"></i></td>
+        </tr>`;
+        })
+        .join('');
+
+      tbody.querySelectorAll('.lead-row').forEach((row) => {
+        row.addEventListener('click', () => openLead(row.dataset.id));
+      });
+    }
+
+    async function loadLeads() {
+      const res = await window.VTrackAPI.get('/leads?limit=200');
+      allLeads = res.data;
+      document.getElementById('leads-subtitle').textContent = `${allLeads.length} lead${allLeads.length === 1 ? '' : 's'} total`;
+      render();
+    }
+
+    async function openLead(id) {
+      const lead = allLeads.find((l) => l.id === id);
+      if (!lead) return;
+
+      document.getElementById('leadModalTitle').textContent = lead.contactName;
+      document.getElementById('lead-detail-body').innerHTML = `
+        <div class="row g-3">
+          <div class="col-6"><div class="text-muted fs-13">Company</div><div>${lead.companyName ?? '—'}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">Fleet Size</div><div>${lead.fleetSize ?? '—'}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">Phone</div><div>${lead.phone ?? '—'}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">Email</div><div>${lead.email ?? '—'}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">Country</div><div>${lead.country ?? '—'}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">Preferred Language</div><div>${lead.preferredLanguage}</div></div>
+          <div class="col-12"><div class="text-muted fs-13">Message</div><div>${lead.message ?? '—'}</div></div>
+        </div>`;
+
+      const historyRes = await window.VTrackAPI.get(`/leads/${id}/history`);
+      document.getElementById('lead-history').innerHTML = historyRes.data.length
+        ? historyRes.data
+            .map((e) => `<div class="mb-1"><span class="text-muted">${new Date(e.createdAt).toLocaleString()}</span> — ${e.eventType.replace(/_/g, ' ')}${e.note ? `: ${e.note}` : ''}</div>`)
+            .join('')
+        : '<div class="text-muted">No history yet.</div>';
+
+      const allowed = TRANSITIONS[lead.status] ?? [];
+      const actionsEl = document.getElementById('lead-status-actions');
+      actionsEl.innerHTML = allowed.length
+        ? allowed
+            .map((s) => `<button class="btn btn-sm btn-outline-primary status-btn" data-status="${s}">Move to "${s.replace(/_/g, ' ')}"</button>`)
+            .join('')
+        : '<span class="text-muted fs-13">No further transitions available.</span>';
+
+      actionsEl.querySelectorAll('.status-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            await window.VTrackAPI.put(`/leads/${id}/status`, { status: btn.dataset.status });
+            leadModal.hide();
+            loadLeads();
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+
+      leadModal = leadModal || new bootstrap.Modal(document.getElementById('leadModal'));
+      leadModal.show();
+    }
+
+    document.querySelectorAll('input[name="statusFilter"]').forEach((el) => el.addEventListener('change', render));
+    loadLeads();
+    setInterval(loadLeads, 20000);
+  </script>
+</body>
+</html>

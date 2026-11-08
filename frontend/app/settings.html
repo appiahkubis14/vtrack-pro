@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="mb-4">
+      <h4 class="fw-bold mb-1">Settings</h4>
+      <p class="text-muted mb-0">Organization profile, team, usage, billing, and audio policy</p>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="settings-tabs">
+      <li class="nav-item"><button class="nav-link active" data-tab="profile">Organization</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="team">Team</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="usage">Usage &amp; Billing</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="audio">Audio Policy</button></li>
+    </ul>
+
+    <div class="settings-pane" id="pane-profile">
+      <div class="card">
+        <div class="card-body">
+          <form id="profile-form">
+            <div id="profile-error" class="alert alert-danger d-none"></div>
+            <div id="profile-success" class="alert alert-success d-none">Saved.</div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Organization Name</label>
+                <input type="text" class="form-control" id="p-name">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Website</label>
+                <input type="text" class="form-control" id="p-website" placeholder="https://">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input type="text" class="form-control" id="p-phone">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Timezone</label>
+                <input type="text" class="form-control" id="p-timezone" placeholder="e.g. Africa/Accra">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Address</label>
+                <input type="text" class="form-control" id="p-address">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">City</label>
+                <input type="text" class="form-control" id="p-city">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Country</label>
+                <input type="text" class="form-control" id="p-country" placeholder="e.g. GH" maxlength="2">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Primary Brand Color</label>
+                <input type="color" class="form-control form-control-color" id="p-color" value="#358ffc">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Default Language</label>
+                <select class="form-select" id="p-language">
+                  <option value="en">English</option>
+                  <option value="fr">French</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="tw">Twi</option>
+                  <option value="ee">Ewe</option>
+                  <option value="ha">Hausa</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Data Retention</label>
+                <select class="form-select" id="p-retention">
+                  <option value="minimal">Minimal</option>
+                  <option value="standard">Standard</option>
+                  <option value="extended">Extended</option>
+                </select>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary" id="profile-submit">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-pane d-none" id="pane-team">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Team Members</span>
+          <span class="fs-13 text-muted" id="team-count"></span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th class="ps-4">Email</th>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th class="pe-4">Joined</th>
+                </tr>
+              </thead>
+              <tbody id="team-table-body">
+                <tr><td colspan="4" class="text-center text-muted py-5">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <p class="text-muted fs-13 mt-2">
+        <i class="bi bi-info-circle me-1"></i>Inviting new teammates isn't wired up in this build yet -
+        for now, new accounts are created via the API and assigned a role directly.
+      </p>
+    </div>
+
+    <div class="settings-pane d-none" id="pane-usage">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header fw-semibold">Usage</div>
+            <div class="card-body">
+              <div id="usage-body" class="text-muted">Loading...</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header fw-semibold">Billing</div>
+            <div class="card-body">
+              <div id="billing-body" class="text-muted">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-pane d-none" id="pane-audio">
+      <div class="card">
+        <div class="card-header fw-semibold">Voice Monitoring Policy</div>
+        <div class="card-body">
+          <div id="audio-error" class="alert alert-danger d-none"></div>
+          <div id="audio-success" class="alert alert-success d-none">Policy updated.</div>
+          <p class="text-muted fs-13">
+            Audio recording is <strong>disabled by default</strong> and cannot be enabled without an explicit
+            policy here, plus per-driver consent on top of that. This governs the organization-wide default;
+            see the Audio Monitoring page for consent records and session history.
+          </p>
+          <form id="audio-form">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Policy Status</label>
+                <select class="form-select" id="a-status">
+                  <option value="disabled">Disabled</option>
+                  <option value="enabled_with_consent">Enabled (consent required)</option>
+                  <option value="enabled_for_sos_only">Enabled for SOS only</option>
+                  <option value="enabled_for_security_incidents">Enabled for security incidents</option>
+                  <option value="covert_requires_approval">Covert (requires approval)</option>
+                  <option value="prohibited_by_jurisdiction">Prohibited by jurisdiction</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Retention (days)</label>
+                <input type="number" class="form-control" id="a-retention" min="1" value="90">
+              </div>
+              <div class="col-md-6">
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" id="a-notice" checked>
+                  <label class="form-check-label" for="a-notice">Require passenger notice</label>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary" id="audio-submit">Save Policy</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-tables.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    const orgId = window.VTrackAPI.getUser()?.organizationId;
+
+    document.querySelectorAll('#settings-tabs button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#settings-tabs button').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.settings-pane').forEach((p) => p.classList.add('d-none'));
+        document.getElementById(`pane-${btn.dataset.tab}`).classList.remove('d-none');
+      });
+    });
+
+    async function loadProfile() {
+      const res = await window.VTrackAPI.get(`/organizations/${orgId}`);
+      const o = res.data;
+      document.getElementById('p-name').value = o.name ?? '';
+      document.getElementById('p-website').value = o.website ?? '';
+      document.getElementById('p-phone').value = o.phone ?? '';
+      document.getElementById('p-timezone').value = o.timezone ?? '';
+      document.getElementById('p-address').value = o.address ?? '';
+      document.getElementById('p-city').value = o.city ?? '';
+      document.getElementById('p-country').value = o.country ?? '';
+      document.getElementById('p-color').value = o.primaryColor ?? '#358ffc';
+      document.getElementById('p-language').value = o.languageDefault ?? 'en';
+      document.getElementById('p-retention').value = o.dataRetentionTier ?? 'standard';
+    }
+
+    document.getElementById('profile-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('profile-error');
+      const successBox = document.getElementById('profile-success');
+      errorBox.classList.add('d-none');
+      successBox.classList.add('d-none');
+      const submitBtn = document.getElementById('profile-submit');
+      submitBtn.disabled = true;
+
+      const body = {
+        name: document.getElementById('p-name').value.trim(),
+        website: document.getElementById('p-website').value.trim() || undefined,
+        phone: document.getElementById('p-phone').value.trim() || undefined,
+        timezone: document.getElementById('p-timezone').value.trim() || undefined,
+        address: document.getElementById('p-address').value.trim() || undefined,
+        city: document.getElementById('p-city').value.trim() || undefined,
+        country: document.getElementById('p-country').value.trim().toUpperCase() || undefined,
+        primaryColor: document.getElementById('p-color').value,
+        languageDefault: document.getElementById('p-language').value,
+        dataRetentionTier: document.getElementById('p-retention').value,
+      };
+
+      try {
+        await window.VTrackAPI.put(`/organizations/${orgId}`, body);
+        successBox.classList.remove('d-none');
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    async function loadTeam() {
+      const res = await window.VTrackAPI.get(`/organizations/${orgId}/users`);
+      const users = res.data;
+      document.getElementById('team-count').textContent = `${users.length} member${users.length === 1 ? '' : 's'}`;
+
+      document.getElementById('team-table-body').innerHTML = users
+        .map(
+          (u) => `
+        <tr>
+          <td class="ps-4">${u.email}</td>
+          <td>${[u.firstName, u.lastName].filter(Boolean).join(' ') || '—'}</td>
+          <td><span class="badge bg-primary-subtle text-primary text-capitalize">${(u.role ?? '').replace(/_/g, ' ')}</span></td>
+          <td class="pe-4 fs-13 text-muted">${new Date(u.createdAt).toLocaleDateString()}</td>
+        </tr>`,
+        )
+        .join('');
+    }
+
+    function usageBar(used, limit) {
+      if (limit === null || limit === undefined) {
+        return `<div class="fs-13 text-muted">${used} used (no limit configured)</div>`;
+      }
+      const pct = Math.min(100, Math.round((used / limit) * 100));
+      const color = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'success';
+      return `
+        <div class="d-flex justify-content-between fs-13 mb-1"><span>${used} / ${limit}</span><span>${pct}%</span></div>
+        <div class="progress" style="height:8px;"><div class="progress-bar bg-${color}" style="width:${pct}%"></div></div>`;
+    }
+
+    async function loadUsage() {
+      const res = await window.VTrackAPI.get('/tenant/usage');
+      const u = res.data;
+
+      document.getElementById('usage-body').innerHTML = `
+        <div class="mb-3">
+          <div class="fw-medium mb-1"><i class="bi bi-broadcast me-1"></i>Devices</div>
+          ${usageBar(u.devices.used, u.devices.limit)}
+        </div>
+        <div>
+          <div class="fw-medium mb-1"><i class="bi bi-people me-1"></i>Users</div>
+          ${usageBar(u.users.used, u.users.limit)}
+        </div>`;
+
+      const billingColor = { trial: 'info', active: 'success', past_due: 'warning', suspended: 'danger', cancelled: 'secondary' };
+      const color = billingColor[u.billingStatus] || 'secondary';
+      document.getElementById('billing-body').innerHTML = `
+        <div class="mb-2">Status: <span class="badge bg-${color}-subtle text-${color} text-capitalize">${(u.billingStatus ?? 'unknown').replace(/_/g, ' ')}</span></div>
+        ${u.trialEndsAt ? `<div class="fs-13 text-muted">Trial ends: ${new Date(u.trialEndsAt).toLocaleDateString()}</div>` : '<div class="fs-13 text-muted">No trial expiration set.</div>'}`;
+    }
+
+    async function loadAudioPolicy() {
+      const res = await window.VTrackAPI.get('/audio/policies');
+      const policy = res.data.find((p) => !p.country);
+      if (policy) {
+        document.getElementById('a-status').value = policy.status;
+        document.getElementById('a-retention').value = policy.retentionDays ?? 90;
+        document.getElementById('a-notice').checked = Boolean(policy.requiresPassengerNotice);
+      }
+    }
+
+    document.getElementById('audio-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('audio-error');
+      const successBox = document.getElementById('audio-success');
+      errorBox.classList.add('d-none');
+      successBox.classList.add('d-none');
+      const submitBtn = document.getElementById('audio-submit');
+      submitBtn.disabled = true;
+
+      try {
+        await window.VTrackAPI.put('/audio/policies', {
+          status: document.getElementById('a-status').value,
+          retentionDays: Number(document.getElementById('a-retention').value),
+          requiresPassengerNotice: document.getElementById('a-notice').checked,
+        });
+        successBox.classList.remove('d-none');
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    loadProfile();
+    loadTeam();
+    loadUsage();
+    loadAudioPolicy();
+  </script>
+</body>
+</html>

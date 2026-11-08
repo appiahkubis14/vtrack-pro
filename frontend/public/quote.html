@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Get a Quote | V-Track Pro</title>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+  <header class="bg-white border-bottom">
+    <nav class="navbar navbar-expand-lg px-4 py-3">
+      <a class="navbar-brand fw-bold text-primary d-flex align-items-center" href="index.html">
+        <i class="bi bi-signpost-split fs-4 me-2"></i>V-Track Pro
+      </a>
+      <a class="btn btn-outline-secondary btn-sm" href="../app/login.html">Sign In</a>
+    </nav>
+  </header>
+
+  <main class="container py-5" style="max-width: 640px;">
+    <div class="text-center mb-4">
+      <h2 class="fw-bold">Get Your Free Quote</h2>
+      <p class="text-muted">Tell us about your fleet and we'll get back to you within one business day.</p>
+    </div>
+
+    <div id="quote-success" class="d-none text-center py-5">
+      <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+      <h4 class="fw-bold mt-3">Thanks — we've got your request!</h4>
+      <p class="text-muted" id="success-message"></p>
+      <a href="https://wa.me/233000000000" target="_blank" class="btn btn-outline-success mt-2"><i class="bi bi-whatsapp me-1"></i>Chat with us on WhatsApp now</a>
+    </div>
+
+    <form id="quote-form" class="card border-0 shadow-sm p-4">
+      <div id="quote-error" class="alert alert-danger d-none"></div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Full Name *</label>
+          <input type="text" class="form-control" id="q-name" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Company Name</label>
+          <input type="text" class="form-control" id="q-company">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Phone *</label>
+          <input type="tel" class="form-control" id="q-phone" required placeholder="+233...">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="q-email">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">WhatsApp Number</label>
+          <input type="tel" class="form-control" id="q-whatsapp">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Country</label>
+          <select class="form-select" id="q-country">
+            <option value="GH">Ghana</option>
+            <option value="NG">Nigeria</option>
+            <option value="TG">Togo</option>
+            <option value="CI">Côte d'Ivoire</option>
+            <option value="BJ">Benin</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Fleet Size</label>
+          <input type="number" class="form-control" id="q-fleet-size" min="1">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Product Interested In</label>
+          <select class="form-select" id="q-product">
+            <option value="">Not sure yet</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Message</label>
+          <textarea class="form-control" id="q-message" rows="3" placeholder="Tell us more about your fleet and what you're looking for..."></textarea>
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="q-consent" required>
+            <label class="form-check-label fs-13" for="q-consent">I agree to be contacted by V-Track Pro about this request.</label>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg w-100 mt-4" id="quote-submit">Request My Quote</button>
+    </form>
+  </main>
+
+  <footer class="py-4 bg-dark text-white-50 text-center fs-13 mt-5">
+    <div class="container">&copy; 2026 V-Track Pro. All rights reserved.</div>
+  </footer>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
+
+    async function loadProducts() {
+      try {
+        const res = await fetch(`${API_BASE}/public/products`);
+        const body = await res.json();
+        const select = document.getElementById('q-product');
+        body.data.forEach((p) => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          select.appendChild(opt);
+        });
+
+        const preselect = new URLSearchParams(window.location.search).get('product');
+        if (preselect) select.value = preselect;
+      } catch (err) {
+        // Non-critical - form still works without the product list.
+      }
+    }
+
+    document.getElementById('quote-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('quote-error');
+      errorBox.classList.add('d-none');
+
+      if (!document.getElementById('q-consent').checked) {
+        errorBox.textContent = 'Please confirm you agree to be contacted.';
+        errorBox.classList.remove('d-none');
+        return;
+      }
+
+      const submitBtn = document.getElementById('quote-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch(`${API_BASE}/public/quotes/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contactName: document.getElementById('q-name').value,
+            companyName: document.getElementById('q-company').value || undefined,
+            phone: document.getElementById('q-phone').value,
+            email: document.getElementById('q-email').value || undefined,
+            whatsappNumber: document.getElementById('q-whatsapp').value || undefined,
+            country: document.getElementById('q-country').value,
+            fleetSize: document.getElementById('q-fleet-size').value ? Number(document.getElementById('q-fleet-size').value) : undefined,
+            productInterestId: document.getElementById('q-product').value || undefined,
+            message: document.getElementById('q-message').value || undefined,
+            consentToContact: true,
+          }),
+        });
+
+        if (res.status === 429) {
+          throw new Error('Too many requests - please wait a moment and try again.');
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Something went wrong - please try again.');
+        }
+
+        const body = await res.json();
+        document.getElementById('success-message').textContent = body.data.message;
+        document.getElementById('quote-form').classList.add('d-none');
+        document.getElementById('quote-success').classList.remove('d-none');
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Request My Quote';
+      }
+    });
+
+    loadProducts();
+  </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audit Trail | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Audit Trail</h4>
+        <p class="text-muted mb-0">Who did what and when. Records cannot be edited or deleted. Passwords and secrets are never stored here.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="card mb-3"><div class="card-body d-flex gap-2 flex-wrap align-items-end">
+      <div><label class="form-label fs-13 mb-1">Type</label><select class="form-select form-select-sm" id="f-type"><option value="">Everything</option></select></div>
+      <div><label class="form-label fs-13 mb-1">Show</label><select class="form-select form-select-sm" id="f-limit"><option>100</option><option>250</option><option>500</option></select></div>
+      <div class="flex-grow-1"><label class="form-label fs-13 mb-1">Search text</label><input class="form-control form-control-sm" id="f-text" placeholder="action, person or id"></div>
+    </div></div>
+    <div class="card"><div class="card-body p-0" id="logs"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      let rows = [], users = {};
+      const when = (d) => new Date(d).toLocaleString('en-GB');
+      function draw() {
+        const q = document.getElementById('f-text').value.trim().toLowerCase();
+        const list = rows.filter((r) => !q || JSON.stringify([r.action, r.resourceType, r.resourceId, users[r.userId]]).toLowerCase().includes(q));
+        document.getElementById('logs').innerHTML = Biz.table([
+          { label: 'When', render: (r) => when(r.createdAt) }, { label: 'Who', render: (r) => Biz.esc(users[r.userId] || (r.userId ? r.userId.slice(0, 8) : 'System')) },
+          { label: 'Action', render: (r) => `<span class="fw-medium">${Biz.esc(r.action)}</span>` }, { label: 'Type', render: (r) => Biz.esc(r.resourceType) },
+          { label: 'Record', render: (r) => r.resourceId ? `<code>${Biz.esc(String(r.resourceId).slice(0, 8))}</code>` : '—' },
+          { label: 'Result', render: (r) => Biz.badge(r.status === 'failed' ? 'rejected' : 'completed').replace(/>[^<]*</, '>' + Biz.esc(r.status) + '<') },
+          { label: 'Details', render: (r) => r.newValues ? `<details><summary class="text-primary" style="cursor:pointer">View</summary><pre class="fs-12 mb-0" style="max-width:420px;white-space:pre-wrap">${Biz.esc(JSON.stringify(r.newValues, null, 2))}</pre></details>` : '—' },
+        ], list, 'No audit records match.');
+      }
+      async function load() {
+        const type = document.getElementById('f-type').value;
+        const [l, u] = await Promise.all([VTrackAPI.get(`/audit/logs?limit=${document.getElementById('f-limit').value}${type ? '&resourceType=' + encodeURIComponent(type) : ''}`), Biz.can(...Biz.ADMIN) ? VTrackAPI.get('/team/users').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })]);
+        rows = l.data; users = Object.fromEntries(u.data.map((x) => [x.id, x.email]));
+        const sel = document.getElementById('f-type'); const types = [...new Set(rows.map((r) => r.resourceType))].sort();
+        if (sel.options.length === 1) types.forEach((t) => sel.add(new Option(t, t)));
+        draw();
+      }
+      document.getElementById('f-type').addEventListener('change', () => Biz.run(load));
+      document.getElementById('f-limit').addEventListener('change', () => Biz.run(load));
+      document.getElementById('f-text').addEventListener('input', draw);
+      Biz.run(load);
+    });
+  </script>
+</body>
+</html>

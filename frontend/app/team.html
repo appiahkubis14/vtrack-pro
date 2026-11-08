@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Team & Logins | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Team & Logins</h4>
+        <p class="text-muted mb-0">Create logins for staff, hub managers, investors and riders. New accounts must choose their own password at first sign-in.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="card"><div class="card-body p-0" id="users"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const me = VTrackAPI.getUser();
+      let owners = [], hubs = [], riders = [];
+      const ROLES = [['org_admin', 'Administrator'], ['fleet_manager', 'Fleet manager'], ['hub_manager', 'Hub manager'], ['finance', 'Finance'], ['auditor', 'Auditor (read only)'], ['dispatcher', 'Dispatcher'], ['investor', 'Investor / vehicle owner'], ['rider', 'Rider'], ['viewer', 'Viewer']];
+      const when = (d) => (d ? new Date(d).toLocaleString('en-GB') : 'Never');
+
+      async function load() {
+        const [u, o, h, r] = await Promise.all([VTrackAPI.get('/team/users'), VTrackAPI.get('/owners'), VTrackAPI.get('/hubs'), VTrackAPI.get('/riders')]);
+        owners = o.data; hubs = h.data; riders = r.data;
+        document.getElementById('users').innerHTML = Biz.table([
+          { label: 'Name', render: (x) => `<span class="fw-medium">${Biz.esc([x.firstName, x.lastName].filter(Boolean).join(' ') || '—')}</span>` }, { label: 'Email', render: (x) => Biz.esc(x.email) },
+          { label: 'Role', render: (x) => Biz.label(x.role) }, { label: 'Linked to', render: (x) => Biz.esc(x.ownerName || x.hubName || x.riderName || '—') },
+          { label: 'Status', render: (x) => (x.isActive ? '<span class="badge bg-success-subtle text-success">Active</span>' : '<span class="badge bg-secondary-subtle text-secondary">Deactivated</span>') + (x.mustChangePassword ? ' <span class="badge bg-warning-subtle text-warning">Must change password</span>' : '') },
+          { label: 'Last sign-in', render: (x) => when(x.lastLoginAt) },
+          { label: '', cls: 'text-end', render: (x) => x.id === me.id ? '<span class="text-muted fs-13">You</span>' : `<button class="btn btn-sm btn-outline-secondary" data-reset="${x.id}" data-email="${Biz.esc(x.email)}">Reset password</button> ` + (x.isActive ? `<button class="btn btn-sm btn-outline-danger" data-off="${x.id}">Deactivate</button>` : `<button class="btn btn-sm btn-outline-success" data-on="${x.id}">Reactivate</button>`) },
+        ], u.data, 'No users yet.');
+      }
+
+      const show = (email, pw) => Biz.form({ title: 'Share this temporary password', intro: `Give it to ${email} privately. It is shown only now, and they must change it at first sign-in.`, submitLabel: 'Done', fields: [{ name: 'pw', label: 'Temporary password', value: pw }], onSubmit: async () => {} });
+
+      const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-person-plus me-1"></i>Add a login';
+      b.onclick = () => {
+        const f = [
+          { name: 'firstName', label: 'First name', required: true, col: 6 }, { name: 'lastName', label: 'Last name', col: 6 },
+          { name: 'email', label: 'Email', type: 'email', required: true, col: 8 }, { name: 'phone', label: 'Phone', col: 4 },
+          { name: 'role', label: 'Role', type: 'select', required: true, options: ROLES.map(([v, l]) => ({ value: v, label: l })), hint: 'Investors need an owner, hub managers a hub, and riders a rider record.' },
+          { name: 'ownerId', label: 'Owner (investors only)', type: 'select', options: Biz.opts(owners.filter((x) => !x.userId), (x) => x.id, (x) => x.name), col: 12 },
+          { name: 'hubId', label: 'Hub (hub managers only)', type: 'select', options: Biz.opts(hubs, (x) => x.id, (x) => x.name), col: 12 },
+          { name: 'riderId', label: 'Rider (riders only)', type: 'select', options: Biz.opts(riders, (x) => x.id, (x) => x.fullName), col: 12 },
+        ];
+        Biz.form({ title: 'Add a login', fields: f, onSubmit: async (v) => {
+          const r = await VTrackAPI.post('/team/users', v); Biz.toast('Login created'); load();
+          setTimeout(() => show(r.data.email, r.data.temporaryPassword), 400);
+        } });
+      };
+      document.getElementById('page-actions').appendChild(b);
+
+      document.addEventListener('click', async (e) => {
+        const t = e.target.closest('button'); if (!t) return;
+        if (t.dataset.reset && await Biz.confirmAction('Reset this password? They will be signed out and must choose a new one.')) { const r = await Biz.run(() => VTrackAPI.post(`/team/users/${t.dataset.reset}/reset-password`, {})); if (r) { load(); setTimeout(() => show(t.dataset.email, r.data.temporaryPassword), 300); } }
+        if (t.dataset.off && await Biz.confirmAction('Deactivate this login? They will be signed out and cannot sign in.')) { await Biz.run(() => VTrackAPI.post(`/team/users/${t.dataset.off}/deactivate`, {}), 'Deactivated'); load(); }
+        if (t.dataset.on) { await Biz.run(() => VTrackAPI.post(`/team/users/${t.dataset.on}/activate`, {}), 'Reactivated'); load(); }
+      });
+      Biz.run(load);
+    });
+  </script>
+</body>
+</html>

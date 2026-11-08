@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contracts | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Contracts</h4>
+        <p class="text-muted mb-0">Outright sales, leases and Work-and-Pay agreements, with their installment schedules.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="d-flex gap-2 mb-3"><select class="form-select form-select-sm w-auto" id="status-filter"><option value="">All statuses</option><option>draft</option><option>active</option><option>defaulted</option><option>completed</option><option>repossessed</option><option>cancelled</option></select></div>    <div class="card mb-4"><div class="card-body p-0" id="contracts-list"></div></div>
+    <div class="modal fade" id="detailModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="detail-title"></h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detail-body"></div></div></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const canSell = Biz.can(...Biz.ADMIN, 'fleet_manager', 'finance');
+      const canMoney = Biz.can(...Biz.ADMIN, 'finance');
+      const isAdmin = Biz.can(...Biz.ADMIN);
+      let contracts = [], owners = [];
+      const ownerName = (id) => (owners.find((o) => o.id === id) || {}).name || '—';
+
+      async function load() {
+        const q = document.getElementById('status-filter').value;
+        const [c, o] = await Promise.all([VTrackAPI.get('/contracts' + (q ? `?status=${q}` : '')), VTrackAPI.get('/owners')]);
+        contracts = c.data; owners = o.data;
+        document.getElementById('contracts-list').innerHTML = Biz.table([
+          { label: 'Contract', render: (r) => `<a href="#" data-act="view" data-id="${r.id}" class="fw-medium">${Biz.esc(r.contractNo)}</a>` },
+          { label: 'Owner', render: (r) => Biz.esc(ownerName(r.ownerId)) }, { label: 'Mode', render: (r) => Biz.label(r.mode) },
+          { label: 'Price', cls: 'text-end', render: (r) => Biz.ghs(r.pricePesewas) }, { label: 'Deposit', cls: 'text-end', render: (r) => Biz.ghs(r.depositPesewas) },
+          { label: 'Starts', render: (r) => Biz.esc(r.startDate) }, { label: 'Status', render: (r) => Biz.badge(r.status) },
+          { label: '', cls: 'text-end', render: (r) => (canSell && ['draft', 'active', 'defaulted'].includes(r.status) ? `<button class="btn btn-sm btn-outline-primary" data-cedit="${r.id}">Edit</button>` : '') },
+        ], contracts, 'No contracts match.');
+      }
+
+      if (canSell) {
+        const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-plus-lg me-1"></i>New contract';
+        b.onclick = async () => {
+          const v = await Biz.run(() => VTrackAPI.get('/vehicles?limit=200')); if (!v) return;
+          const stock = v.data.filter((x) => x.lifecycleStatus === 'in_stock');
+          if (!stock.length) return Biz.toast('No vehicles in stock. Receive a consignment first.', 'warning');
+          if (!owners.length) return Biz.toast('Add an owner first.', 'warning');
+          Biz.form({ title: 'New contract', fields: [
+            { name: 'ownerId', label: 'Owner', type: 'select', required: true, options: Biz.opts(owners, (o) => o.id, (o) => o.name) },
+            { name: 'vehicleId', label: 'Vehicle in stock', type: 'select', required: true, options: Biz.opts(stock, (x) => x.id, (x) => `${x.plateNumber} — ${x.make ?? ''} ${x.model ?? ''}`) },
+            { name: 'mode', label: 'Mode', type: 'select', required: true, col: 6, options: [['outright','Outright purchase'],['lease','Lease'],['work_and_pay','Work-and-Pay']].map(([v, l]) => ({ value: v, label: l })) },
+            { name: 'startDate', label: 'Start date', type: 'date', required: true, col: 6 },
+            { name: 'pricePesewas', label: 'Price', type: 'money', required: true, col: 6 }, { name: 'depositPesewas', label: 'Deposit', type: 'money', col: 6 },
+            { name: 'termWeeks', label: 'Term (weeks)', type: 'number', col: 6, hint: 'Lease and Work-and-Pay.' }, { name: 'dailyAmountPesewas', label: 'Daily amount', type: 'money', col: 6, hint: 'Work-and-Pay only.' },
+            { name: 'gracePeriodHours', label: 'Grace period before a lock (hours)', type: 'number', col: 6, hint: 'Leave empty to use the hub setting, or 12 hours.' },
+          ], onSubmit: async (x) => { await VTrackAPI.post('/contracts', x); Biz.toast('Draft contract created. Activate it to hand the vehicle over.'); load(); } });
+        };
+        document.getElementById('page-actions').appendChild(b);
+      }
+      document.getElementById('status-filter').addEventListener('change', () => Biz.run(load));
+      const mo = (p) => (p == null ? '' : (Number(p) / 100).toFixed(2));
+      document.getElementById('contracts-list').addEventListener('click', (e) => {
+        const id = e.target.closest('[data-cedit]')?.dataset.cedit; if (!id) return; const c = contracts.find((x) => x.id === id); const draft = c.status === 'draft';
+        const fields = [
+          ...(draft ? [
+            { name: 'ownerId', label: 'Owner', type: 'select', required: true, value: c.ownerId, options: Biz.opts(owners, (o) => o.id, (o) => o.name) },
+            { name: 'mode', label: 'Mode', type: 'select', required: true, col: 6, value: c.mode, options: [['outright','Outright purchase'],['lease','Lease'],['work_and_pay','Work-and-Pay']].map(([v, l]) => ({ value: v, label: l })) },
+            { name: 'startDate', label: 'Start date', type: 'date', required: true, col: 6, value: String(c.startDate).slice(0, 10) },
+            { name: 'pricePesewas', label: 'Price', type: 'money', required: true, col: 6, value: mo(c.pricePesewas) }, { name: 'depositPesewas', label: 'Deposit', type: 'money', col: 6, value: mo(c.depositPesewas) },
+            { name: 'termWeeks', label: 'Term (weeks)', type: 'number', col: 6, value: c.termWeeks ?? undefined }, { name: 'dailyAmountPesewas', label: 'Daily amount', type: 'money', col: 6, value: mo(c.dailyAmountPesewas) },
+          ] : []),
+          { name: 'gracePeriodHours', label: 'Grace period before a lock (hours)', type: 'number', col: 6, value: c.gracePeriodHours ?? undefined },
+          { name: 'defaultAfterArrearsDays', label: 'Default after arrears (days)', type: 'number', col: 6, value: c.defaultAfterArrearsDays ?? 14 },
+          { name: 'notes', label: 'Notes', type: 'textarea', value: c.notes || '' },
+        ];
+        Biz.form({ title: `Edit ${c.contractNo}`, clearable: true, intro: draft ? 'This contract is still a draft, so every term can change. The vehicle cannot change: cancel the draft and make a new one for another vehicle.' : 'This contract is running, so its price and payment plan are fixed. You can change the grace period, the arrears limit and the notes.', fields,
+          onSubmit: async (v) => { await VTrackAPI.put(`/contracts/${id}`, v); Biz.toast('Contract saved'); load(); } });
+      });
+
+      async function openDetail(id) {
+        const r = await Biz.run(() => VTrackAPI.get(`/contracts/${id}`)); if (!r) return; const c = r.data;
+        const a = c.arrears;
+        let actions = '';
+        if (canMoney && c.status === 'draft') actions += `<button class="btn btn-success btn-sm me-1" data-do="activate">Approve & activate</button><button class="btn btn-outline-secondary btn-sm me-1" data-do="cancel">Cancel</button>`;
+        if (canMoney && (c.status === 'active' || c.status === 'defaulted')) actions += `<button class="btn btn-primary btn-sm me-1" data-do="pay">Record payment</button>`;
+        if (canMoney && c.status === 'active') actions += `<button class="btn btn-outline-warning btn-sm me-1" data-do="default">Flag as defaulted</button>`;
+        if (canMoney && c.status === 'defaulted') actions += `<button class="btn btn-outline-success btn-sm me-1" data-do="reinstate">Reinstate</button>`;
+        if (isAdmin && c.status === 'defaulted') actions += `<button class="btn btn-danger btn-sm" data-do="repossess">Repossess vehicle</button>`;
+        document.getElementById('detail-title').textContent = `${c.contractNo} — ${ownerName(c.ownerId)}`;
+        document.getElementById('detail-body').innerHTML = `
+          <div class="row g-3 mb-3">${Biz.stat('Status', Biz.badge(c.status))}${Biz.stat('Paid on installments', Biz.ghs(c.paidPesewas), `of ${Biz.ghs(c.totalInstallmentsPesewas)}`)}${Biz.stat('Outstanding', Biz.ghs(c.outstandingPesewas))}${Biz.stat('Overdue', Biz.ghs(a.overdueAmount), a.arrearsDays ? `${a.arrearsDays} days in arrears` : 'On time')}</div>
+          <div class="mb-3">${actions}</div>
+          ${Biz.table([{ label: 'Due', render: (i) => Biz.esc(i.dueDate) }, { label: 'Amount', cls: 'text-end', render: (i) => Biz.ghs(i.amountPesewas) }, { label: 'Paid', cls: 'text-end', render: (i) => Biz.ghs(i.paidPesewas) }, { label: '', render: (i) => (i.paidPesewas >= i.amountPesewas ? Biz.badge('settled') : '') }], c.installments, 'No installments: this contract was paid in full up front.')}`;
+        const modalEl = document.getElementById('detailModal'); const modal = bootstrap.Modal.getOrCreateInstance(modalEl); modal.show();
+        document.getElementById('detail-body').querySelectorAll('[data-do]').forEach((btn) => btn.addEventListener('click', async () => {
+          const d = btn.dataset.do;
+          const done = async (p, msg) => { const res = await Biz.run(p, msg); if (res) { await load(); openDetail(id); } };
+          if (d === 'pay') return Biz.form({ title: 'Record a payment', fields: [
+            { name: 'amountPesewas', label: 'Amount received', type: 'money', required: true },
+            { name: 'method', label: 'Paid by', type: 'select', required: true, value: 'momo', col: 6, options: [{ value: 'momo', label: 'Mobile money' }, { value: 'cash', label: 'Cash' }, { value: 'bank', label: 'Bank' }] },
+            { name: 'payerName', label: 'Who paid (if not the owner)', col: 6 },
+            { name: 'reference', label: 'Payment reference', required: true, hint: 'The mobile money transaction id or receipt number. Entering the same one twice is ignored.' },
+          ], onSubmit: async (v) => { await VTrackAPI.post(`/contracts/${id}/payments`, v); Biz.toast('Payment recorded'); await load(); openDetail(id); } });
+          const warn = { activate: 'Activate this contract? The vehicle becomes the owner\'s and the schedule is created.', cancel: 'Cancel this contract?', default: 'Flag this contract as defaulted?', reinstate: 'Reinstate this contract?', repossess: 'REPOSSESS this vehicle? It returns to the company and any rider assignment ends. This cannot be undone.' }[d];
+          if (!(await Biz.confirmAction(warn))) return;
+          done(() => VTrackAPI.post(`/contracts/${id}/${d}`, {}), 'Done');
+        }));
+      }
+      document.addEventListener('click', (e) => { const el = e.target.closest('[data-act="view"]'); if (el) { e.preventDefault(); openDetail(el.dataset.id); } });
+      Biz.run(load);
+    });
+
+  </script>
+</body>
+</html>

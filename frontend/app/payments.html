@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Payments & Payouts | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Payments & Payouts</h4>
+        <p class="text-muted mb-0">Every cash movement with its purpose, payer and reference. Payouts can never exceed what the ledger says is owed.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="row g-3 mb-4" id="stats"></div>
+    <div class="card mb-4" id="bal-card"><div class="card-header fw-semibold">What is owed and what hubs hold</div><div class="card-body p-0" id="balances"></div></div>
+    <div class="card"><div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><span class="fw-semibold">Payments</span>
+      <select class="form-select form-select-sm w-auto" id="purpose"><option value="">All purposes</option><option value="deposit">Deposits</option><option value="installment">Installments</option><option value="charge">Charging fees</option><option value="payout">Payouts</option><option value="hub_deposit">Hub deposits</option></select></div>
+      <div class="card-body p-0" id="payments"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    // references for contract receipts are stored as contract:<id>:<ref>; people only need to see their own part
+    const shortRef = (r) => { const t = String(r || '').split(':'); return t.length > 1 ? t[t.length - 1] : r; };
+    Biz.start(() => {
+      const isMoney = Biz.can(...Biz.ADMIN, 'finance');
+      const canHub = Biz.can(...Biz.ADMIN, 'finance', 'fleet_manager', 'hub_manager');
+      let balances = [];
+      const when = (d) => new Date(d).toLocaleString('en-GB');
+      const METHODS = [{ value: 'cash', label: 'Cash' }, { value: 'momo', label: 'Mobile money' }, { value: 'bank', label: 'Bank' }];
+      const NAMES = { owner_account: 'Owed to owner', rider_chop: 'Owed to rider', hub_collections: 'Cash held at hub', company_cash: 'Company cash and bank' };
+
+      async function load() {
+        const purpose = document.getElementById('purpose').value;
+        const jobs = [VTrackAPI.get('/payments' + (purpose ? '?purpose=' + purpose : ''))];
+        if (isMoney) jobs.push(VTrackAPI.get('/payments/balances'));
+        const [p, b] = await Promise.all(jobs);
+        const rows = p.data;
+        const sum = (f) => rows.filter(f).reduce((a, x) => a + Number(x.amountPesewas), 0);
+        document.getElementById('stats').innerHTML = Biz.stat('Received', Biz.ghs(sum((x) => x.direction === 'in'))) + Biz.stat('Paid out', Biz.ghs(sum((x) => x.purpose === 'payout'))) + Biz.stat('Hub deposits', Biz.ghs(sum((x) => x.purpose === 'hub_deposit'))) + Biz.stat('Payments listed', rows.length);
+        if (isMoney) {
+          balances = b.data;
+          document.getElementById('balances').innerHTML = Biz.table([
+            { label: 'Account', render: (x) => Biz.esc(NAMES[x.account] || x.account) }, { label: 'Name', render: (x) => Biz.esc(x.name || 'Company') },
+            { label: 'Balance', cls: 'text-end', render: (x) => Biz.ghs(x.balancePesewas) },
+            { label: '', cls: 'text-end', render: (x) => (x.account === 'owner_account' && x.ownerId && x.balancePesewas > 0) ? `<button class="btn btn-sm btn-outline-primary" data-pay="owners" data-id="${x.ownerId}" data-name="${Biz.esc(x.name)}" data-max="${x.balancePesewas}">Pay out</button>`
+              : (x.account === 'rider_chop' && x.balancePesewas > 0) ? `<button class="btn btn-sm btn-outline-primary" data-pay="riders" data-id="${x.ownerId}" data-name="${Biz.esc(x.name)}" data-max="${x.balancePesewas}">Pay out</button>`
+              : (x.account === 'hub_collections' && canHub && x.balancePesewas > 0) ? `<button class="btn btn-sm btn-outline-secondary" data-dep="${x.ownerId}" data-name="${Biz.esc(x.name)}" data-max="${x.balancePesewas}">Record deposit</button>` : '' },
+          ], balances.filter((x) => x.balancePesewas !== 0), 'No balances yet. They appear once settlements are posted.');
+        } else document.getElementById('bal-card').remove();
+        document.getElementById('payments').innerHTML = Biz.table([
+          { label: 'When', render: (x) => when(x.createdAt) }, { label: 'Purpose', render: (x) => Biz.badge(x.purpose) }, { label: 'Direction', render: (x) => x.direction === 'in' ? '<span class="text-success">In</span>' : '<span class="text-danger">Out</span>' },
+          { label: 'Party', render: (x) => Biz.esc(x.partyName || '—') }, { label: 'Method', render: (x) => Biz.label(x.method) }, { label: 'Reference', render: (x) => `<code>${Biz.esc(shortRef(x.reference))}</code>` },
+          { label: 'Amount', cls: 'text-end', render: (x) => Biz.ghs(x.amountPesewas) },
+        ], rows, 'No payments recorded yet.');
+      }
+
+      if (canHub) {
+        const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-bank me-1"></i>Hub cash deposit';
+        b.onclick = async () => {
+          const hubs = (await VTrackAPI.get('/hubs')).data;
+          Biz.form({ title: 'Hub cash deposit', intro: 'Cash handed from the hub to the company or banked.', fields: [
+            { name: 'hubId', label: 'Hub', type: 'select', required: true, options: Biz.opts(hubs, (h) => h.id, (h) => h.name) },
+            { name: 'amountPesewas', label: 'Amount', type: 'money', required: true, col: 6 }, { name: 'method', label: 'Method', type: 'select', required: true, value: 'bank', options: METHODS, col: 6 },
+            { name: 'reference', label: 'Bank slip or receipt number', required: true }, { name: 'note', label: 'Note' },
+          ], onSubmit: async (v) => { const { hubId, ...body } = v; const r = await VTrackAPI.post(`/hubs/${hubId}/cash-deposits`, body); Biz.toast(r.data.duplicate ? 'Already recorded' : 'Deposit recorded'); load(); } });
+        };
+        document.getElementById('page-actions').appendChild(b);
+      }
+      document.getElementById('purpose').addEventListener('change', () => Biz.run(load));
+      document.addEventListener('click', (e) => {
+        const t = e.target.closest('button'); if (!t) return;
+        if (t.dataset.pay) Biz.form({ title: `Pay out to ${t.dataset.name}`, intro: `Up to ${Biz.ghs(t.dataset.max)} is owed.`, submitLabel: 'Record payout', fields: [
+          { name: 'amountPesewas', label: 'Amount', type: 'money', required: true, col: 6 }, { name: 'method', label: 'Method', type: 'select', required: true, value: 'momo', options: METHODS, col: 6 },
+          { name: 'reference', label: 'Transaction id or receipt number', required: true, hint: 'Entering the same reference twice never pays twice.' }, { name: 'note', label: 'Note' },
+        ], onSubmit: async (v) => { const r = await VTrackAPI.post(`/payouts/${t.dataset.pay}/${t.dataset.id}`, v); Biz.toast(r.data.duplicate ? 'Already recorded' : 'Payout recorded'); load(); } });
+        if (t.dataset.dep) Biz.form({ title: `Cash deposit from ${t.dataset.name}`, intro: `The hub holds ${Biz.ghs(t.dataset.max)} in recorded collections.`, fields: [
+          { name: 'amountPesewas', label: 'Amount', type: 'money', required: true, col: 6 }, { name: 'method', label: 'Method', type: 'select', required: true, value: 'bank', options: METHODS, col: 6 },
+          { name: 'reference', label: 'Bank slip or receipt number', required: true }, { name: 'note', label: 'Note' },
+        ], onSubmit: async (v) => { const r = await VTrackAPI.post(`/hubs/${t.dataset.dep}/cash-deposits`, v); Biz.toast(r.data.duplicate ? 'Already recorded' : 'Deposit recorded'); load(); } });
+      });
+      Biz.run(load);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title id="page-title">Product | V-Track Pro</title>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+  <header class="bg-white border-bottom">
+    <nav class="navbar navbar-expand-lg px-4 py-3">
+      <a class="navbar-brand fw-bold text-primary d-flex align-items-center" href="index.html">
+        <i class="bi bi-signpost-split fs-4 me-2"></i>V-Track Pro
+      </a>
+      <div class="d-flex gap-2">
+        <a class="btn btn-primary btn-sm" href="quote.html">Get a Quote</a>
+        <a class="btn btn-outline-secondary btn-sm" href="../app/login.html">Sign In</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container py-5" style="max-width: 900px;">
+    <div id="product-body">
+      <div class="text-center text-muted py-5">Loading product...</div>
+    </div>
+  </main>
+
+  <footer class="py-4 bg-dark text-white-50 text-center fs-13 mt-5">
+    <div class="container">&copy; 2026 V-Track Pro. All rights reserved.</div>
+  </footer>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
+    const slug = new URLSearchParams(window.location.search).get('slug');
+
+    async function loadProduct() {
+      const container = document.getElementById('product-body');
+      if (!slug) {
+        container.innerHTML = '<div class="text-center text-muted py-5">No product specified.</div>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/public/products/${slug}`);
+        if (!res.ok) throw new Error('Not found');
+        const body = await res.json();
+        const p = body.data;
+
+        document.getElementById('page-title').textContent = `${p.seoTitle ?? p.name} | V-Track Pro`;
+
+        container.innerHTML = `
+          <h1 class="fw-bold mb-2">${p.name}</h1>
+          <p class="fs-5 text-muted mb-4">${p.shortDescription ?? ''}</p>
+          ${p.longDescription ? `<p>${p.longDescription}</p>` : ''}
+
+          ${p.features?.length ? `
+          <h4 class="fw-semibold mt-4 mb-3">Key Features</h4>
+          <div class="row g-3 mb-4">
+            ${p.features.map((f) => `
+              <div class="col-md-6">
+                <div class="d-flex gap-2">
+                  <i class="bi bi-check-circle-fill text-success mt-1"></i>
+                  <div><div class="fw-medium">${f.label}</div><div class="text-muted fs-13">${f.description ?? ''}</div></div>
+                </div>
+              </div>`).join('')}
+          </div>` : ''}
+
+          ${p.technicalSpecs && Object.keys(p.technicalSpecs).length ? `
+          <h4 class="fw-semibold mt-4 mb-3">Technical Specifications</h4>
+          <table class="table table-sm w-auto">
+            ${Object.entries(p.technicalSpecs).map(([k, v]) => `<tr><td class="text-muted pe-4">${k}</td><td>${v}</td></tr>`).join('')}
+          </table>` : ''}
+
+          <div class="mt-5 p-4 bg-light rounded-3 text-center">
+            <h5 class="fw-semibold mb-3">Interested in ${p.name}?</h5>
+            <a href="quote.html?product=${encodeURIComponent(p.id)}" class="btn btn-primary btn-lg">Request a Quote</a>
+            ${p.datasheetUrl ? `<a href="${p.datasheetUrl}" class="btn btn-outline-secondary btn-lg ms-2" target="_blank">Download Datasheet</a>` : ''}
+          </div>`;
+      } catch (err) {
+        container.innerHTML = '<div class="text-center text-muted py-5">Product not found.</div>';
+      }
+    }
+
+    loadProduct();
+  </script>
+</body>
+</html>

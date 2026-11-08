@@ -1,0 +1,127 @@
+# Production stack for one server (Ghana-hosted or any Linux VPS).
+#   cp ops/.env.production.example ops/.env.production   # then fill in every value
+#   docker compose -f ops/docker-compose.prod.yml --env-file ops/.env.production up -d --build
+# Only ports 80/443 (website + API) and the tracker ports are published. Databases and Redis are NOT reachable from outside.
+name: vtrack
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in ops/.env.production}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../frontend:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+    networks: [edge, internal]
+
+  api:
+    build: { context: ../backend, dockerfile: docker/Dockerfile, target: production }
+    restart: unless-stopped
+    env_file: [.env.production]
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_DATABASE: vtrack
+      TS_HOST: timescale
+      REDIS_HOST: redis
+      MQTT_BROKER_URL: mqtt://mqtt:1883
+      TZ: Africa/Accra
+    # tracker devices connect straight to these TCP ports
+    ports: ["5023:5023", "5040:5040", "5050:5050"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      timescale: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health | grep -q ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    volumes: [uploads:/app/uploads]
+    networks: [internal]
+
+  migrate:
+    build: { context: ../backend, dockerfile: docker/Dockerfile, target: production }
+    command: ["node", "scripts/migrate.js", "timescale"]
+    env_file: [.env.production]
+    environment: { DB_HOST: postgres, DB_DATABASE: vtrack, TS_HOST: timescale }
+    depends_on:
+      postgres: { condition: service_healthy }
+      timescale: { condition: service_healthy }
+    restart: "no"
+    networks: [internal]
+
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    restart: unless-stopped
+    environment: { POSTGRES_DB: vtrack, POSTGRES_USER: vtrack, POSTGRES_PASSWORD: "${DB_PASSWORD:?set DB_PASSWORD}" }
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U vtrack -d vtrack"], interval: 10s, timeout: 5s, retries: 10 }
+    networks: [internal]
+
+  timescale:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment: { POSTGRES_DB: vtrack_ts, POSTGRES_USER: vtrack, POSTGRES_PASSWORD: "${TS_PASSWORD:?set TS_PASSWORD}" }
+    volumes: [timescale_data:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U vtrack -d vtrack_ts"], interval: 10s, timeout: 5s, retries: 10 }
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    volumes: [redis_data:/data]
+    healthcheck: { test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"], interval: 10s, timeout: 5s, retries: 10 }
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD}" }
+    networks: [internal]
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes: [../backend/docker/mosquitto/config:/mosquitto/config:ro, mosquitto_data:/mosquitto/data]
+    networks: [internal]
+
+  # Nightly encrypted backup of both databases (see docs/deployment-ghana.md). Runs ops/backup.sh at 02:30 Accra time.
+  backup:
+    image: postgis/postgis:16-3.4-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache bash gnupg tzdata >/dev/null
+        echo "30 2 * * * /ops/backup.sh >> /var/log/backup.log 2>&1" | crontab -
+        exec crond -f -L /dev/stdout
+    environment:
+      TZ: Africa/Accra
+      DB_HOST: postgres
+      DB_USERNAME: vtrack
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DATABASE: vtrack
+      TS_HOST: timescale
+      BACKUP_DIR: /backups
+      OFFSITE_DIR: ${OFFSITE_DIR:-}
+      RETENTION_DAYS: ${RETENTION_DAYS:-14}
+      BACKUP_PASSPHRASE_FILE: /run/secrets/backup_passphrase
+    secrets: [backup_passphrase]
+    volumes:
+      - ./backup.sh:/ops/backup.sh:ro
+      - ${BACKUP_HOST_DIR:-/var/backups/vtrack}:/backups
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [internal]
+
+secrets:
+  backup_passphrase:
+    file: ${BACKUP_PASSPHRASE_FILE:?set BACKUP_PASSPHRASE_FILE to the path of a file holding the backup passphrase}
+
+networks:
+  edge: {}
+  internal: { internal: true }
+
+volumes: { postgres_data: {}, timescale_data: {}, redis_data: {}, mosquitto_data: {}, caddy_data: {}, caddy_config: {}, uploads: {} }

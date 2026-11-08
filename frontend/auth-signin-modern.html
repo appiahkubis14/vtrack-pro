@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth group" data-layout="modern" data-content-width="fluid" data-bs-theme="light" data-sidebar-colors="dark" data-sidebar="large" data-nav-type="default" dir="ltr" data-colors="default" data-profile-sidebar>
+<head>
+
+    <!-- Basic Meta Tags -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Sign In | Evohus - Admin Dashboard Template</title>
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="Evohus | Admin Dashboard Template">
+    <meta name="description" content="Get the best admin dashboard template with Bootstrap 5.3.8, multiple layouts, RTL/LTR support, dark/light mode, responsive design, and Sass support. Lightweight, easy to customize, and perfect for your next project.">
+    <meta name="keywords" content="bootstrap dashboard, admin template, responsive dashboard, analytics dashboard, e-commerce dashboard, admin dashboard template, bootstrap 5.3.8, responsive design, RTL LTR support, dark light mode, sass supported, lightweight, easy to customize, bootstrap">
+    <meta name="author" content="SRBThemes">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="#!">
+    <meta property="og:title" content="Evohus| Admin Dashboard Template">
+    <meta property="og:description" content="Get the best admin dashboard template with Bootstrap 5.3.8, multiple layouts, RTL/LTR support, dark/light mode, responsive design, and Sass support. Lightweight, easy to customize, and perfect for your next project.">
+    <meta property="og:image" content="#!">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="#!">
+    <meta property="twitter:title" content="Evohus| Admin Dashboard Template">
+    <meta property="twitter:description" content="Get the best admin dashboard template with Bootstrap 5.3.8, multiple layouts, RTL/LTR support, dark/light mode, responsive design, and Sass support. Lightweight, easy to customize, and perfect for your next project.">
+    <meta property="twitter:image" content="#!">
+    
+    <!-- favicon -->
+    <link rel="shortcut icon" href="assets/images/favicon.ico">
+
+    <!-- Layout JS -->
+    <!-- Bootstrap CSS -->
+    <link href="assets/css/bootstrap.rtl.css" rel="stylesheet" type="text/css" disabled>
+    <!-- Icons CSS -->
+    <!-- App CSS -->
+    <link href="assets/css/app.rtl.css" rel="stylesheet" type="text/css" disabled>
+    <!-- Admin Bundle JS -->
+  <script type="module" crossorigin src="assets/admin.bundle-CEbNEZ37.js"></script>
+  <script type="module" crossorigin src="assets/signin-basic.init-CarhJS1N.js"></script>
+  
+  <link rel="stylesheet" crossorigin href="assets/css/admin.css">
+</head>
+
+<body class="sidebar-hidden ">
+<div class="auth-modern position-relative">
+    <div class="position-absolute top-0 start-0 end-0 bottom-0 bg-black opacity-50"></div>
+    <div class="container min-vh-100 py-12 d-flex align-items-center position-relative">
+        <div class="w-100">
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-8 col-lg-6 col-xl-5 col-xxl-4">
+                    <div class="mb-8 text-center">
+                        <a href="index.html">
+                            <img src="assets/images/logo-white.png" loading="lazy" alt="logo-white" class="mx-auto h-5">
+                        </a>
+                    </div>
+                    <div class="card mb-0">
+                        <div class="p-sm-8 px-md-10 card-body">
+                            <h4 class="mb-2 text-center text-white">Welcome Back, Sophia!</h4>
+                            <p class="mb-7 text-center">Don't have an account? <a href="auth-signup-modern.html" class="link link-primary">Sign Up</a></p>
+                            <!-- Social login buttons -->
+                            <div class="d-flex flex-wrap flex-md-nowrap gap-4">
+                                <a type="button" class="btn btn-light w-100 border border-white border-opacity-10 social-link">
+                                    <i class="bi bi-google-play me-1"></i>
+                                    Sign In Google
+                                </a>
+                                <a type="button" class="btn btn-light w-100 border border-white border-opacity-10 social-link">
+                                    <i class="bi bi-apple me-1"></i>
+                                    Sign In Apple
+                                </a>
+                            </div>
+                            <div class="text-center my-4">
+                                <div>OR</div>
+                            </div>
+                            <form>
+                                <div class="alert alert-success alert-dismissible d-none" role="alert">
+                                    <span>You've successfully signed in to Evohus!</span>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                                <div class="alert alert-danger alert-dismissible d-none" role="alert">
+                                    <span>Invalid email or password</span>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                                <div class="row g-4 mt-3">
+                                    <div class="col-12 mt-0">
+                                        <label for="emailInput" class="form-label">Email Or Username</label>
+                                        <input type="text" id="emailInput" placeholder="Enter your email or username" class="form-control" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="passwordInput" class="form-label">Password</label>
+                                        <div class="position-relative password">
+                                            <input type="password" id="passwordInput" class="form-control pe-8" placeholder="Enter your password" required>
+                                            <div class="position-absolute top-50 end-0 me-3 text-muted translate-middle-y cursor-pointer" id="passwordShowIcon">
+                                                <i data-lucide="eye-off" class="size-4"></i>
+                                                <i data-lucide="eye" class="size-4 d-none"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 d-flex justify-content-between align-items-center">
+                                        <div class="form-check check-primary">
+                                            <input type="checkbox" id="rememberMe" class="form-check-input">
+                                            <label for="rememberMe" class="form-check-label">Remember me</label>
+                                        </div>
+                                        <a href="auth-forgot-password-modern.html" class="fs-sm">Forgot Password?</a>
+                                    </div>
+                                    <div class="col-12 mt-6">
+                                        <button type="submit" class="btn btn-primary w-100">Sign In</button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mt-7 p-4 border border-white border-opacity-10 border-dashed rounded">
+                                <div>
+                                    <p>Email: admin@example.com</p>
+                                    <p>Password: admin@123</p>
+                                </div>
+                                <button class="btn bg-white py-6px px-5 bg-opacity-10 border-white border-opacity-10 text-white">Login</button>
+                            </div>
+
+                            <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mt-4 p-4 border border-white border-opacity-10 border-dashed rounded">
+                                <div>
+                                    <p>Email: user@example.com</p>
+                                    <p>Password: user@123</p>
+                                </div>
+                                <button class="btn bg-white py-6px px-5 bg-opacity-10 border-white border-opacity-10 text-white">Login</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- load your vendor scripts for all pages  -->
+
+</body>
+
+</html>

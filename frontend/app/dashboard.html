@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Fleet Overview</h4>
+        <p class="text-muted mb-0" id="dashboard-subtitle">Loading...</p>
+      </div>
+      <button class="btn btn-outline-primary btn-sm" id="refresh-btn"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;"><i class="bi bi-truck fs-4"></i></div>
+            <div>
+              <div class="text-muted fs-13">Total Vehicles</div>
+              <div class="fs-3 fw-bold" id="kpi-vehicles">–</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="bg-success-subtle text-success rounded-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;"><i class="bi bi-broadcast fs-4"></i></div>
+            <div>
+              <div class="text-muted fs-13">Devices Online</div>
+              <div class="fs-3 fw-bold"><span id="kpi-online">–</span><span class="fs-13 text-muted"> / <span id="kpi-total-devices">–</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="bg-danger-subtle text-danger rounded-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;"><i class="bi bi-exclamation-triangle fs-4"></i></div>
+            <div>
+              <div class="text-muted fs-13">Open Alerts</div>
+              <div class="fs-3 fw-bold" id="kpi-alerts">–</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="bg-info-subtle text-info rounded-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;"><i class="bi bi-speedometer fs-4"></i></div>
+            <div>
+              <div class="text-muted fs-13">Fleet km/L</div>
+              <div class="fs-3 fw-bold" id="kpi-efficiency">–</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- needs attention -->
+    <div class="card mb-3" id="attn-card">
+      <div class="card-header d-flex align-items-center gap-2 flex-wrap">
+        <span class="fw-semibold"><i class="bi bi-flag-fill text-danger me-1"></i>Needs attention now</span>
+        <span id="attn-sum" class="d-flex gap-2"></span>
+        <div class="ms-auto btn-group btn-group-sm" id="attn-filter" role="group" aria-label="Filter by urgency">
+          <button class="btn btn-outline-secondary active" data-sev="all">All</button>
+          <button class="btn btn-outline-secondary" data-sev="critical">Urgent</button>
+          <button class="btn btn-outline-secondary" data-sev="warning">Soon</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="attn-list" class="row g-3"><div class="col-12 text-muted">Checking…</div></div>
+      </div>
+    </div>
+
+    <!-- money and fleet analysis -->
+    <div class="row g-3 mb-3" id="analysis-row">
+      <div class="col-lg-8" id="money-col">
+        <div class="card h-100">
+          <div class="card-header d-flex align-items-center"><span class="fw-semibold">Collections, last 14 days</span><span class="ms-auto text-muted fs-13" id="money-note"></span></div>
+          <div class="card-body">
+            <div class="row g-3 mb-3" id="money-kpis"></div>
+            <div style="position:relative;height:230px"><canvas id="money-chart"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4" id="fleet-col">
+        <div class="card h-100">
+          <div class="card-header fw-semibold">Fleet use</div>
+          <div class="card-body" id="fleet-use"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-lg-4">
+        <div class="card h-100">
+          <div class="card-header fw-semibold">Fleet Status</div>
+          <div class="card-body d-flex align-items-center justify-content-center" style="min-height:220px;">
+            <div style="position:relative;height:220px;width:100%"><canvas id="fleet-status-chart"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card h-100">
+          <div class="card-header fw-semibold">Alert Severity</div>
+          <div class="card-body d-flex align-items-center justify-content-center" style="min-height:220px;">
+            <div style="position:relative;height:220px;width:100%"><canvas id="alert-severity-chart"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card h-100">
+          <div class="card-header fw-semibold">30-Day Performance</div>
+          <div class="card-body">
+            <div id="performance-body" class="text-muted">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <!-- Recent alerts -->
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Recent Alerts</span>
+            <a href="alerts.html" class="fs-13">View all</a>
+          </div>
+          <div class="card-body p-0">
+            <div id="alerts-list" class="list-group list-group-flush">
+              <div class="list-group-item text-muted text-center py-4">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicle quick list -->
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Vehicles</span>
+            <a href="vehicles.html" class="fs-13">View all</a>
+          </div>
+          <div class="card-body p-0">
+            <div id="vehicles-list" class="list-group list-group-flush">
+              <div class="list-group-item text-muted text-center py-4">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vendor/chart.umd.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    const severityColor = { critical: 'danger', high: 'warning', medium: 'info', low: 'secondary' };
+    const statusColor = { moving: 'success', idle: 'info', stopped: 'secondary', parked: 'secondary', offline: 'danger' };
+
+    async function loadOverview() {
+      const res = await window.VTrackAPI.get('/dashboard/statistics');
+      const stats = res.data;
+      document.getElementById('kpi-vehicles').textContent = stats.totalVehicles ?? 0;
+      document.getElementById('kpi-online').textContent = stats.onlineDevices ?? 0;
+      document.getElementById('kpi-total-devices').textContent = stats.totalDevices ?? 0;
+      document.getElementById('kpi-alerts').textContent = stats.openAlerts ?? 0;
+      document.getElementById('kpi-efficiency').textContent = stats.fuel?.fleetKmPerLiter
+        ? Number(stats.fuel.fleetKmPerLiter).toFixed(1)
+        : '—';
+      document.getElementById('dashboard-subtitle').textContent = `Last updated ${new Date().toLocaleTimeString()}`;
+    }
+
+    async function loadAlerts() {
+      const res = await window.VTrackAPI.get('/alerts?limit=6');
+      const alerts = res.data;
+      const el = document.getElementById('alerts-list');
+
+      if (!alerts.length) {
+        el.innerHTML = '<div class="list-group-item text-muted text-center py-4"><i class="bi bi-check-circle text-success fs-4 d-block mb-2"></i>No alerts - all clear</div>';
+        return;
+      }
+
+      el.innerHTML = alerts
+        .map(
+          (a) => `
+        <div class="list-group-item d-flex justify-content-between align-items-start">
+          <div>
+            <span class="badge bg-${severityColor[a.severity] || 'secondary'}-subtle text-${severityColor[a.severity] || 'secondary'} text-uppercase fs-11 mb-1">${a.severity}</span>
+            <div class="fw-medium">${a.title}</div>
+            <div class="text-muted fs-13">${new Date(a.createdAt).toLocaleString()}</div>
+          </div>
+          ${a.isAcknowledged ? '' : `<button class="btn btn-sm btn-outline-secondary ack-btn" data-id="${a.id}">Ack</button>`}
+        </div>`,
+        )
+        .join('');
+
+      el.querySelectorAll('.ack-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await window.VTrackAPI.put(`/alerts/${btn.dataset.id}/acknowledge`);
+          loadAlerts();
+        });
+      });
+    }
+
+    async function loadVehicles() {
+      const res = await window.VTrackAPI.get('/vehicles?limit=6');
+      const vehicles = res.data;
+      const el = document.getElementById('vehicles-list');
+
+      if (!vehicles.length) {
+        el.innerHTML = '<div class="list-group-item text-muted text-center py-4">No vehicles registered yet</div>';
+        return;
+      }
+
+      el.innerHTML = vehicles
+        .map(
+          (v) => `
+        <a href="vehicles.html" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-medium">${v.plateNumber}</div>
+            <div class="text-muted fs-13">${v.make ?? ''} ${v.model ?? ''}</div>
+          </div>
+          <span class="badge bg-secondary-subtle text-secondary">${Number(v.odometer).toLocaleString()} km</span>
+        </a>`,
+        )
+        .join('');
+    }
+
+    let fleetChart, alertChart;
+
+    async function loadFleetStatusChart() {
+      const res = await window.VTrackAPI.get('/dashboard/statistics');
+      const stats = res.data;
+      const online = stats.onlineDevices ?? 0;
+      const offline = stats.offlineDevices ?? 0;
+      const ctx = document.getElementById('fleet-status-chart');
+      if (!ctx) return;
+
+      if (fleetChart) fleetChart.destroy();
+      fleetChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Online', 'Offline'],
+          datasets: [{ data: [online, offline], backgroundColor: ['#0ac072', '#e8434c'], borderWidth: 0 }],
+        },
+        options: {
+          plugins: { legend: { position: 'bottom' } },
+          maintainAspectRatio: false,
+        },
+      });
+    }
+
+    async function loadAlertSeverityChart() {
+      // Computed from the real alert list rather than the dashboard summary
+      // endpoint, since that endpoint only exposes critical/high counts -
+      // this gives a complete, accurate medium/low breakdown too.
+      const res = await window.VTrackAPI.get('/alerts?limit=200');
+      const alerts = res.data;
+      const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+      alerts.forEach((a) => {
+        if (counts[a.severity] !== undefined) counts[a.severity] += 1;
+      });
+
+      const ctx = document.getElementById('alert-severity-chart');
+      if (!ctx) return;
+      if (alertChart) alertChart.destroy();
+
+      if (!alerts.length) {
+        ctx.parentElement.parentElement.innerHTML = '<div class="text-muted text-center"><i class="bi bi-check-circle text-success fs-2 d-block mb-2"></i>No alerts recorded</div>';
+        return;
+      }
+
+      alertChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Critical', 'High', 'Medium', 'Low'],
+          datasets: [{
+            data: [counts.critical, counts.high, counts.medium, counts.low],
+            backgroundColor: ['#e8434c', '#f5a623', '#358ffc', '#6b7280'],
+            borderWidth: 0,
+          }],
+        },
+        options: {
+          plugins: { legend: { position: 'bottom' } },
+          maintainAspectRatio: false,
+        },
+      });
+    }
+
+    async function loadPerformance() {
+      const res = await window.VTrackAPI.get('/dashboard/performance');
+      const p = res.data;
+      document.getElementById('performance-body').innerHTML = `
+        <div class="mb-3">
+          <div class="text-muted fs-13">Trips (last ${p.periodDays} days)</div>
+          <div class="fs-3 fw-bold">${p.tripCount}</div>
+        </div>
+        <div class="row">
+          <div class="col-6">
+            <div class="text-muted fs-13">Avg Speed</div>
+            <div class="fw-semibold">${Number(p.avgSpeedKmh).toFixed(1)} km/h</div>
+          </div>
+          <div class="col-6">
+            <div class="text-muted fs-13">Total Distance</div>
+            <div class="fw-semibold">${Number(p.totalDistanceKm).toFixed(1)} km</div>
+          </div>
+        </div>`;
+    }
+
+
+    // ---- needs attention + money/fleet analysis (GET /dashboard/attention)
+    const ESCH = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ESCH[c]);
+    const ghs = (p) => 'GHS ' + (Number(p || 0) / 100).toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const SEV = { critical: { cls: 'danger', label: 'Urgent', icon: 'bi-exclamation-octagon-fill' }, warning: { cls: 'warning', label: 'Soon', icon: 'bi-exclamation-triangle-fill' }, info: { cls: 'info', label: 'Note', icon: 'bi-info-circle-fill' } };
+    let attention = null, attnSev = 'all', moneyChart = null;
+    function renderAttention() {
+      const a = attention; if (!a) return;
+      document.getElementById('attn-sum').innerHTML = ['critical', 'warning', 'info'].filter((k) => a.summary[k]).map((k) => `<span class="badge bg-${SEV[k].cls}${k === 'warning' ? ' text-dark' : ''}">${a.summary[k]} ${SEV[k].label.toLowerCase()}</span>`).join('') || '<span class="badge bg-success">All clear</span>';
+      const list = a.items.filter((i) => attnSev === 'all' || i.severity === attnSev);
+      document.getElementById('attn-list').innerHTML = list.length ? list.map((i) => `<div class="col-md-6 col-xl-4"><div class="border rounded-3 h-100 p-3 border-${SEV[i.severity].cls}-subtle" style="border-left:4px solid var(--bs-${SEV[i.severity].cls}) !important">
+          <div class="d-flex align-items-start gap-2"><i class="bi ${SEV[i.severity].icon} text-${SEV[i.severity].cls} mt-1"></i><div class="flex-grow-1"><div class="fw-semibold">${esc(i.title)} <span class="badge bg-${SEV[i.severity].cls}-subtle text-${SEV[i.severity].cls}">${i.count}</span></div><div class="text-muted fs-13">${esc(i.detail)}</div></div></div>
+          <ul class="list-unstyled mb-2 mt-2 fs-13">${i.rows.map((r) => `<li class="d-flex justify-content-between gap-2"><span class="text-truncate">${esc(r.label)}</span><span class="text-muted text-nowrap">${esc(r.sub || '')}</span></li>`).join('')}${i.count > i.rows.length ? `<li class="text-muted">and ${i.count - i.rows.length} more</li>` : ''}</ul>
+          <a href="${esc(i.link)}" class="btn btn-sm btn-outline-${SEV[i.severity].cls === 'warning' ? 'secondary' : SEV[i.severity].cls}">Open <i class="bi bi-arrow-right"></i></a></div></div>`).join('')
+        : `<div class="col-12 text-center text-muted py-3"><i class="bi bi-check-circle text-success fs-3 d-block"></i>${attnSev === 'all' ? 'Nothing needs your attention right now.' : 'Nothing in this group.'}</div>`;
+    }
+    document.getElementById('attn-filter').addEventListener('click', (e) => { const b = e.target.closest('[data-sev]'); if (!b) return; attnSev = b.dataset.sev; document.querySelectorAll('#attn-filter .btn').forEach((x) => x.classList.toggle('active', x === b)); renderAttention(); });
+    async function loadAttention() {
+      let res; try { res = await window.VTrackAPI.get('/dashboard/attention'); } catch (e) { document.getElementById('attn-card').classList.add('d-none'); document.getElementById('analysis-row').classList.add('d-none'); return; }
+      attention = res.data; renderAttention();
+      const m = attention.money, f = attention.fleet;
+      document.getElementById('money-col').classList.toggle('d-none', !m);
+      document.getElementById('fleet-col').className = m ? 'col-lg-4' : 'col-12';
+      if (m) {
+        const arrow = m.changePct == null ? '' : m.changePct >= 0 ? `<span class="text-success"><i class="bi bi-arrow-up-right"></i> ${m.changePct}%</span>` : `<span class="text-danger"><i class="bi bi-arrow-down-right"></i> ${-m.changePct}%</span>`;
+        const rate = m.collectionRatePct;
+        const kpi = (label, value, sub, cls) => `<div class="col-6 col-md-3"><div class="text-muted fs-13">${label}</div><div class="fs-5 fw-bold ${cls || ''}">${value}</div><div class="fs-13 text-muted">${sub || ''}</div></div>`;
+        document.getElementById('money-kpis').innerHTML = kpi('Collected, last 7 days', ghs(m.paidWeek), `${arrow} vs the 7 days before`) + kpi('Collection rate', rate == null ? '—' : rate + '%', `of ${ghs(m.dueWeek)} due`, rate != null && rate < 80 ? 'text-danger' : rate != null && rate < 95 ? 'text-warning' : 'text-success') + kpi('Unpaid shortfall', ghs(m.outstandingShortfall), 'last 30 days', m.outstandingShortfall > 0 ? 'text-danger' : '') + kpi('Daily average', ghs(Math.round(m.paidWeek / 7)), 'collected per day');
+        document.getElementById('money-note').textContent = 'Due vs paid, from settled days';
+        const labels = m.series.map((x) => new Date(x.date + 'T00:00').toLocaleDateString([], { day: '2-digit', month: 'short' }));
+        if (moneyChart) moneyChart.destroy();
+        moneyChart = new Chart(document.getElementById('money-chart'), { type: 'bar', data: { labels, datasets: [{ label: 'Due', data: m.series.map((x) => x.due / 100), backgroundColor: 'rgba(148,163,184,.55)' }, { label: 'Paid', data: m.series.map((x) => x.paid / 100), backgroundColor: 'rgba(22,163,74,.8)' }, { label: 'Shortfall', data: m.series.map((x) => x.shortfall / 100), type: 'line', borderColor: '#dc2626', backgroundColor: '#dc2626', tension: .3, pointRadius: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: GHS ${c.parsed.y.toLocaleString()}` } } }, scales: { y: { beginAtZero: true, ticks: { callback: (v) => v.toLocaleString() } } } } });
+      }
+      const util = f.utilisationPct;
+      document.getElementById('fleet-use').innerHTML = `<div class="text-muted fs-13">Vehicles with a rider</div><div class="d-flex align-items-baseline gap-2"><span class="fs-2 fw-bold">${f.assigned}</span><span class="text-muted">of ${f.usable} in service</span></div>
+        <div class="progress mb-2" style="height:10px" role="progressbar" aria-label="Fleet in use"><div class="progress-bar ${util != null && util < 60 ? 'bg-danger' : util < 85 ? 'bg-warning' : 'bg-success'}" style="width:${util || 0}%"></div></div>
+        <div class="fs-13 mb-3">${util == null ? '' : `<b>${util}%</b> of usable vehicles earn money. `}${f.idleUnassigned ? `<span class="text-warning">${f.idleUnassigned} usable vehicle${f.idleUnassigned === 1 ? ' has' : 's have'} no rider</span>, so they earn nothing.` : '<span class="text-success">Every usable vehicle has a rider.</span>'}</div>
+        <div class="text-muted fs-13 mb-1">By stage</div>${Object.entries(f.byStatus).map(([k, n]) => `<div class="d-flex justify-content-between fs-13"><span class="text-capitalize">${esc(k.replace(/_/g, ' '))}</span><b>${n}</b></div>`).join('')}`;
+    }
+
+    // chart text follows the theme (light or dark)
+    const chartText = () => { if (window.Chart) Chart.defaults.color = getComputedStyle(document.body).color; };
+    chartText();
+    document.addEventListener('vtrack-theme', () => { chartText(); loadAll(); });
+
+    async function loadAll() {
+      await Promise.all([
+        loadOverview(),
+        loadAlerts(),
+        loadVehicles(),
+        loadFleetStatusChart(),
+        loadAlertSeverityChart(),
+        loadPerformance(),
+        loadAttention(),
+      ]).catch((err) => {
+        console.error(err);
+      });
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', loadAll);
+    loadAll();
+    setInterval(() => { if (!document.hidden) loadAll(); }, 15000); // light polling refresh; live-map.html uses real WebSocket push instead
+  </script>
+</body>
+</html>

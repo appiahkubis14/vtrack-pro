@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business Reports | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div><h4 class="fw-bold mb-1">Business Reports</h4><p class="text-muted mb-0">Daily hub close, weekly and monthly summaries, rider and owner statements, and arrears.</p></div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <ul class="nav nav-tabs mb-3" id="tabs">
+      <li class="nav-item"><a class="nav-link active" href="#" data-tab="close">Hub daily close</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="period">Weekly / monthly</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="rider">Rider statement</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="owner">Owner statement</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="arrears">Arrears</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="summary">Summary by vehicle / region / type</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="health">Fleet &amp; battery health</a></li>
+    </ul>
+    <div class="d-flex gap-2 mb-3 align-items-center flex-wrap" id="controls"></div>
+    <div id="output"></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      let hubs = [], riders = [], owners = [], tab = 'close';
+      const out = document.getElementById('output'), ctl = document.getElementById('controls');
+      const monthStart = () => Biz.today().slice(0, 8) + '01';
+      const sel = (id, rows, v, t, blank) => `<select class="form-select form-select-sm w-auto" id="${id}">${blank ? `<option value="">${blank}</option>` : ''}${rows.map((r) => `<option value="${v(r)}">${Biz.esc(t(r))}</option>`).join('')}</select>`;
+      const go = '<button class="btn btn-sm btn-primary" id="go">Show</button>';
+      const val = (id) => document.getElementById(id)?.value;
+      const totalsRow = (o) => Object.entries(o).map(([k, v]) => Biz.stat(k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()), Biz.ghs(v))).join('');
+
+      const TABS = {
+        close: { controls: () => sel('hub', hubs, (h) => h.id, (h) => h.name) + '<input type="date" class="form-control form-control-sm w-auto" id="date" value="' + Biz.today() + '">' + go,
+          run: async () => {
+            if (!val('hub')) throw new Error('Choose a hub');
+            const r = (await VTrackAPI.get(`/business-reports/hub-daily-close?hubId=${val('hub')}&date=${val('date')}`)).data;
+            out.innerHTML = `<div class="row g-3 mb-3">${totalsRow(r.totals)}</div>${r.ridersNotYetSettled ? `<div class="alert alert-warning">${r.ridersNotYetSettled} rider(s) with a vehicle have not been settled for this day.</div>` : ''}` +
+              `<div class="card"><div class="card-body p-0">${Biz.table([
+                { label: 'Rider', render: (x) => Biz.esc(x.riderName) }, { label: 'Vehicle', render: (x) => Biz.esc(x.plateNumber) }, { label: 'Collected', cls: 'text-end', render: (x) => Biz.ghs(x.grossCollected) },
+                { label: 'Charging', cls: 'text-end', render: (x) => Biz.ghs(x.chargeFee) }, { label: 'To owner', cls: 'text-end', render: (x) => Biz.ghs(x.remittancePaid) },
+                { label: 'Service fee', cls: 'text-end', render: (x) => Biz.ghs(x.serviceFee) }, { label: 'Chop', cls: 'text-end', render: (x) => Biz.ghs(x.chop) },
+                { label: 'Shortfall', cls: 'text-end', render: (x) => (x.shortfall ? `<span class="text-danger">${Biz.ghs(x.shortfall)}</span>` : '—') }, { label: 'Status', render: (x) => Biz.badge(x.status) },
+              ], r.lines, 'No settlements for this day.')}</div></div>`; } },
+        period: { controls: () => '<select class="form-select form-select-sm w-auto" id="p"><option value="weekly-summary">Week</option><option value="monthly-summary">Month</option></select>' + sel('hub', hubs, (h) => h.id, (h) => h.name, 'All hubs') + '<input type="date" class="form-control form-control-sm w-auto" id="date" value="' + Biz.today() + '">' + go,
+          run: async () => {
+            const r = (await VTrackAPI.get(`/business-reports/${val('p')}?date=${val('date')}${val('hub') ? '&hubId=' + val('hub') : ''}`)).data;
+            out.innerHTML = `<p class="text-muted">${r.from} to ${r.to} · remittance collected: <strong>${r.remittanceCollectionRate === null ? '—' : Math.round(r.remittanceCollectionRate * 1000) / 10 + '%'}</strong></p><div class="row g-3 mb-3">${totalsRow(r.totals)}</div>` +
+              `<div class="card"><div class="card-body p-0">${Biz.table([
+                { label: 'Day', render: (x) => Biz.esc(x.date) }, { label: 'Settlements', render: (x) => x.settlements }, { label: 'Collected', cls: 'text-end', render: (x) => Biz.ghs(x.grossCollected) },
+                { label: 'Remittance due', cls: 'text-end', render: (x) => Biz.ghs(x.remittanceDue) }, { label: 'Remittance paid', cls: 'text-end', render: (x) => Biz.ghs(x.remittancePaid) },
+                { label: 'Chop', cls: 'text-end', render: (x) => Biz.ghs(x.chop) }, { label: 'Shortfall', cls: 'text-end', render: (x) => Biz.ghs(x.shortfall) }], r.days, 'No settled days in this period.')}</div></div>`; } },
+        rider: { controls: () => sel('rider', riders, (r) => r.id, (r) => r.fullName) + '<input type="date" class="form-control form-control-sm w-auto" id="from" value="' + monthStart() + '"><input type="date" class="form-control form-control-sm w-auto" id="to" value="' + Biz.today() + '">' + go,
+          run: async () => {
+            if (!val('rider')) throw new Error('Choose a rider');
+            const r = (await VTrackAPI.get(`/business-reports/rider-statement?riderId=${val('rider')}&from=${val('from')}&to=${val('to')}`)).data;
+            out.innerHTML = `<p class="text-muted">${Biz.esc(r.riderName)} · ${r.days} settled day(s)</p><div class="row g-3 mb-3">${totalsRow(r.totals)}</div><div class="card"><div class="card-body p-0">${Biz.table([
+              { label: 'Day', render: (x) => Biz.esc(x.date) }, { label: 'Collected', cls: 'text-end', render: (x) => Biz.ghs(x.grossCollected) }, { label: 'Charging', cls: 'text-end', render: (x) => Biz.ghs(x.chargeFee) },
+              { label: 'Remittance', cls: 'text-end', render: (x) => Biz.ghs(x.remittancePaid) }, { label: 'Service fee', cls: 'text-end', render: (x) => Biz.ghs(x.serviceFee) }, { label: 'Chop', cls: 'text-end', render: (x) => Biz.ghs(x.chop) }, { label: 'Status', render: (x) => Biz.badge(x.status) },
+            ], r.rows, 'No settled days in this period.')}</div></div>` +
+              `<div class="card mt-3"><div class="card-header fw-semibold">Daily routes <span class="text-muted fs-13">${r.routeTotals.trips} trip(s) · ${r.routeTotals.distance} distance</span></div><div class="card-body p-0">${Biz.table([
+                { label: 'Day', render: (x) => Biz.esc(x.date) }, { label: 'Vehicle', render: (x) => Biz.esc(x.plateNumber) }, { label: 'Trips', cls: 'text-end', render: (x) => x.trips }, { label: 'Distance', cls: 'text-end', render: (x) => x.distance },
+                { label: 'First start', render: (x) => x.firstStart ? new Date(x.firstStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' }, { label: 'Last end', render: (x) => x.lastEnd ? new Date(x.lastEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
+              ], r.routes, 'No trips recorded on this rider\'s vehicle in this period.')}</div></div>`; } },
+        owner: { controls: () => sel('owner', owners, (o) => o.id, (o) => o.name) + '<input type="date" class="form-control form-control-sm w-auto" id="from" value="' + monthStart() + '"><input type="date" class="form-control form-control-sm w-auto" id="to" value="' + Biz.today() + '">' + go,
+          run: async () => {
+            if (!val('owner')) throw new Error('Choose an owner');
+            const r = (await VTrackAPI.get(`/business-reports/owner-statement?ownerId=${val('owner')}&from=${val('from')}&to=${val('to')}`)).data;
+            out.innerHTML = `<div class="row g-3 mb-3">${Biz.stat('Collected by their vehicles', Biz.ghs(r.totals.grossCollected))}${Biz.stat('Earned for the owner', Biz.ghs(r.totals.netToOwner))}${Biz.stat('Held for the owner (ledger)', Biz.ghs(r.ledgerBalance))}</div>` +
+              `<div class="card mb-3"><div class="card-header fw-semibold">Vehicles</div><div class="card-body p-0">${Biz.table([{ label: 'Vehicle', render: (x) => Biz.esc(x.plateNumber) }, { label: 'Days settled', render: (x) => x.settledDays }, { label: 'Collected', cls: 'text-end', render: (x) => Biz.ghs(x.grossCollected) }, { label: 'Owner share', cls: 'text-end', render: (x) => Biz.ghs(x.netToOwner) }, { label: 'Earned to date', cls: 'text-end', render: (x) => x.payback ? Biz.ghs(x.payback.earnedToDatePesewas) : '—' }, { label: 'Payback', render: (x) => x.payback && x.payback.progressPct != null ? `${x.payback.progressPct}%` + (x.payback.weeksRemaining == null ? '' : ` <span class="text-muted fs-13">(${x.payback.weeksRemaining} wk left)</span>`) : '—' }], r.vehicles, 'No vehicles.')}</div></div>` +
+              `<div class="card"><div class="card-header fw-semibold">Contracts</div><div class="card-body p-0">${Biz.table([{ label: 'Contract', render: (x) => Biz.esc(x.contractNo) }, { label: 'Mode', render: (x) => Biz.label(x.mode) }, { label: 'Status', render: (x) => Biz.badge(x.status) }, { label: 'Price', cls: 'text-end', render: (x) => Biz.ghs(x.price) }, { label: 'Paid', cls: 'text-end', render: (x) => Biz.ghs(x.installmentsPaid) }, { label: 'Outstanding', cls: 'text-end', render: (x) => Biz.ghs(x.outstanding) }], r.contracts, 'No contracts.')}</div></div>`; } },
+        arrears: { controls: () => go.replace('Show', 'Refresh'),
+          run: async () => {
+            const r = (await VTrackAPI.get('/business-reports/arrears')).data;
+            out.innerHTML = `<div class="card"><div class="card-body p-0">${Biz.table([
+              { label: 'Contract', render: (x) => Biz.esc(x.contractNo) }, { label: 'Owner', render: (x) => `${Biz.esc(x.ownerName)}<div class="text-muted fs-13">${Biz.esc(x.ownerPhone)}</div>` }, { label: 'Vehicle', render: (x) => Biz.esc(x.plateNumber) },
+              { label: 'Overdue', cls: 'text-end', render: (x) => `<span class="text-danger">${Biz.ghs(x.overdueAmount)}</span>` }, { label: 'Installments', render: (x) => x.overdueCount },
+              { label: 'Days late', render: (x) => `${x.arrearsDays} <span class="text-muted fs-13">(default at ${x.defaultAfterDays})</span>` }, { label: 'Status', render: (x) => Biz.badge(x.status) },
+            ], r, 'No contract is behind on payments.')}</div></div>`; } },
+        summary: { controls: () => '<select class="form-select form-select-sm w-auto" id="dim"><option value="vehicle">By vehicle</option><option value="region">By region</option><option value="vehicle_type">By vehicle type</option></select><input type="date" class="form-control form-control-sm w-auto" id="from" value="' + monthStart() + '"><input type="date" class="form-control form-control-sm w-auto" id="to" value="' + Biz.today() + '">' + go,
+          run: async () => {
+            const r = (await VTrackAPI.get(`/business-reports/summary-by?dimension=${val('dim')}&from=${val('from')}&to=${val('to')}`)).data;
+            out.innerHTML = `<div class="card"><div class="card-body p-0">${Biz.table([
+              { label: Biz.label(r.dimension), render: (x) => `<span class="fw-medium">${Biz.esc(String(x.label).replace(/_/g, ' '))}</span>` }, { label: 'Vehicles', cls: 'text-end', render: (x) => x.vehicles }, { label: 'Days', cls: 'text-end', render: (x) => x.settlements },
+              { label: 'Collected', cls: 'text-end', render: (x) => Biz.ghs(x.grossCollected) }, { label: 'To owners', cls: 'text-end', render: (x) => Biz.ghs(x.remittancePaid) }, { label: 'Service fees', cls: 'text-end', render: (x) => Biz.ghs(x.serviceFee) },
+              { label: 'Charging', cls: 'text-end', render: (x) => Biz.ghs(x.chargeFee) }, { label: 'Chop', cls: 'text-end', render: (x) => Biz.ghs(x.chop) }, { label: 'Shortfall', cls: 'text-end', render: (x) => x.shortfall ? `<span class="text-danger">${Biz.ghs(x.shortfall)}</span>` : '—' },
+              { label: 'Remittance collected', cls: 'text-end', render: (x) => x.collectionRate + '%' },
+            ], r.rows, 'No settled days in this period.')}</div></div>`; } },
+        health: { controls: () => sel('hub', hubs, (h) => h.id, (h) => h.name, 'All hubs') + go,
+          run: async () => {
+            const r = (await VTrackAPI.get('/business-reports/fleet-health' + (val('hub') ? '?hubId=' + val('hub') : ''))).data;
+            const f = r.vehicleFlags, b = r.batteryStats;
+            out.innerHTML = `<div class="row g-3 mb-3">${Biz.stat('Locked now', f.locked)}${Biz.stat('In grace period', f.inGracePeriod)}${Biz.stat('Sold, no tracker linked', f.noTracker)}${Biz.stat('Sold, no rider', f.noRider)}${Biz.stat('Need attention', f.needAttention, 'maintenance or stolen')}</div>` +
+              `<div class="row g-3 mb-3"><div class="col-lg-6"><div class="card h-100"><div class="card-header fw-semibold">Vehicles by status</div><div class="card-body p-0">${Biz.table([{ label: 'Status', render: (x) => Biz.badge(x.status) }, { label: 'Vehicles', cls: 'text-end', render: (x) => x.count }], r.vehiclesByStatus, 'No vehicles.')}</div></div></div>` +
+              `<div class="col-lg-6"><div class="card h-100"><div class="card-header fw-semibold">Batteries by status</div><div class="card-body p-0">${Biz.table([{ label: 'Status', render: (x) => Biz.badge(x.status) }, { label: 'Batteries', cls: 'text-end', render: (x) => x.count }], r.batteriesByStatus, 'No batteries.')}</div></div></div></div>` +
+              `<div class="row g-3 mb-3">${Biz.stat('Batteries', b.total)}${Biz.stat('Average health', b.averageHealthPct == null ? '—' : b.averageHealthPct + '%')}${Biz.stat('Below 70% health', b.below70)}${Biz.stat('Health not recorded', b.healthUnknown)}${Biz.stat('Most cycles', b.maxCycles)}</div>` +
+              `<div class="card"><div class="card-header fw-semibold">Batteries needing attention</div><div class="card-body p-0">${Biz.table([
+                { label: 'Serial', render: (x) => Biz.esc(x.serialNo) }, { label: 'Status', render: (x) => Biz.badge(x.status) }, { label: 'Health', render: (x) => x.healthPct == null ? '—' : x.healthPct + '%' },
+                { label: 'Cycles', cls: 'text-end', render: (x) => x.cycleCount }, { label: 'Hub', render: (x) => Biz.esc(x.hubName || '—') }, { label: 'On vehicle', render: (x) => Biz.esc(x.plateNumber || '—') },
+              ], r.batteriesNeedingAttention, 'No battery is faulty, missing or below 70% health.')}</div></div>`; } },
+      };
+
+      function show(name) {
+        tab = name;
+        document.querySelectorAll('#tabs .nav-link').forEach((a) => a.classList.toggle('active', a.dataset.tab === name));
+        ctl.innerHTML = TABS[name].controls(); out.innerHTML = '';
+        document.getElementById('go').addEventListener('click', () => Biz.run(TABS[tab].run));
+        if (name === 'arrears' || name === 'health') Biz.run(TABS[name].run);
+      }
+      document.getElementById('tabs').addEventListener('click', (e) => { const a = e.target.closest('[data-tab]'); if (a) { e.preventDefault(); show(a.dataset.tab); } });
+      Biz.run(async () => {
+        const get = (p) => VTrackAPI.get(p).then((r) => r.data).catch(() => []);
+        [hubs, riders, owners] = await Promise.all([get('/hubs'), get('/riders'), get('/owners')]);
+        show('close');
+      });
+    });
+
+  </script>
+</body>
+</html>

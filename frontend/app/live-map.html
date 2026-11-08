@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Map | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+  <link rel="stylesheet" href="js/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="js/vendor/leaflet/MarkerCluster.css">
+  <link rel="stylesheet" href="js/vendor/leaflet/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="js/vendor/leaflet/leaflet-geoman.css">
+  <link rel="stylesheet" href="css/vtrack-map.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="vm-page">
+    <div id="vm-wrap" class="vm-wrap">
+      <!-- left panel -->
+      <aside id="vm-panel" class="vm-panel">
+        <ul class="nav nav-pills vm-tabs" role="tablist">
+          <li class="nav-item"><button class="nav-link active" data-tab="assets"><i class="bi bi-truck"></i><span>Assets</span></button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="zones"><i class="bi bi-hexagon"></i><span>Zones</span></button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="dispatch" title="Deliveries and ETA"><i class="bi bi-signpost-split"></i><span>Dispatch</span><b id="vm-dp-badge" class="vm-badge d-none">0</b></button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="health" title="Breakdown risk"><i class="bi bi-heart-pulse"></i><span>Health</span><b id="vm-hl-badge" class="vm-badge d-none">0</b></button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="tasks" title="Zone checklists"><i class="bi bi-ui-checks"></i><span>Tasks</span><b id="vm-tk-badge" class="vm-badge d-none">0</b></button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="replay"><i class="bi bi-clock-history"></i><span>Replay</span></button></li>
+          <li class="nav-item" id="vm-setup-tab"><button class="nav-link" data-tab="setup" title="Groups, import, sensors, privacy, access"><i class="bi bi-sliders"></i><span>Setup</span></button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="alerts"><i class="bi bi-bell-fill"></i><span>Alerts</span><b id="vm-alert-badge" class="vm-badge d-none">0</b></button></li>
+        </ul>
+
+        <section data-pane="assets" class="vm-pane">
+          <div class="vm-pane-head">
+            <div class="input-group input-group-sm"><span class="input-group-text"><i class="bi bi-search"></i></span><input id="vm-asset-search" class="form-control" placeholder="Plate, rider or hub"></div>
+            <div id="vm-status-chips" class="vm-chips"></div>
+          </div>
+          <div id="vm-asset-list" class="vm-list"></div>
+        </section>
+
+        <section data-pane="zones" class="vm-pane d-none">
+          <div class="vm-pane-head">
+            <div class="d-flex gap-2 flex-wrap" id="vm-draw-buttons">
+              <button class="btn btn-sm btn-primary" data-draw="Circle"><i class="bi bi-circle"></i> Circle</button>
+              <button class="btn btn-sm btn-primary" data-draw="Polygon"><i class="bi bi-pentagon"></i> Polygon</button>
+              <button class="btn btn-sm btn-primary" data-draw="Rectangle"><i class="bi bi-square"></i> Rectangle</button>
+            </div>
+            <div class="form-text" id="vm-draw-help">Pick a shape, then draw it on the map. A circle can also follow a vehicle (choose it when saving).</div>
+          </div>
+          <div id="vm-zone-list" class="vm-list"></div>
+        </section>
+
+        <section data-pane="dispatch" class="vm-pane d-none">
+          <div class="vm-pane-head">
+            <div class="d-flex align-items-center gap-2"><span class="small text-muted flex-grow-1">Vehicles on a delivery: ETA, delay risk and customer messages. Checked every minute.</span><button id="dp-refresh" class="btn btn-sm btn-outline-secondary" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button></div>
+            <div id="dp-sum" class="vm-chips"></div>
+          </div>
+          <div id="dp-list" class="vm-list"></div>
+        </section>
+
+        <section data-pane="health" class="vm-pane d-none">
+          <div class="vm-pane-head">
+            <div class="small text-muted">Breakdown risk from engine and battery readings (coolant, fault codes, charge, tracker battery, overdue service). Rule-based, with the reasons shown.</div>
+            <div id="hl-sum" class="vm-chips"></div>
+          </div>
+          <div id="hl-list" class="vm-list"></div>
+        </section>
+
+        <section data-pane="tasks" class="vm-pane d-none">
+          <div class="vm-pane-head">
+            <div class="d-flex gap-2 align-items-center">
+              <div class="btn-group btn-group-sm" id="tk-filter"><button class="btn btn-outline-primary active" data-st="pending">Waiting</button><button class="btn btn-outline-primary" data-st="completed">Done</button><button class="btn btn-outline-primary" data-st="expired">Missed</button></div>
+              <button id="tk-defs" class="btn btn-sm btn-outline-secondary ms-auto" title="Create or edit checklists"><i class="bi bi-list-check"></i> Checklists</button>
+            </div>
+          </div>
+          <div id="tk-list" class="vm-list"></div>
+        </section>
+
+        <section data-pane="setup" class="vm-pane d-none">
+          <div class="vm-pane-head"><div class="small text-muted">Settings for the map. Only people with the right role can change them.</div></div>
+          <div class="vm-list p-2">
+            <button class="vm-setup" data-setup="groups"><i class="bi bi-collection"></i><div><b>Vehicle groups</b><small>Group vehicles and limit zones to a group</small></div></button>
+            <button class="vm-setup" data-setup="import"><i class="bi bi-file-earmark-arrow-up"></i><div><b>Import geofences</b><small>Many customer sites from CSV or GeoJSON</small></div></button>
+            <button class="vm-setup" data-setup="assets"><i class="bi bi-thermometer-snow"></i><div><b>Sensor assets</b><small>Trailers, coolers, generators with sensors</small></div></button>
+            <button class="vm-setup" data-setup="privacy"><i class="bi bi-person-lock"></i><div><b>Driver privacy hours</b><small>Hide positions outside working hours</small></div></button>
+            <button class="vm-setup" data-setup="access"><i class="bi bi-diagram-3"></i><div><b>Who sees which hubs</b><small>Limit a person's map to certain hubs</small></div></button>
+            <div id="vm-setup-note" class="form-text px-1 mt-2"></div>
+          </div>
+        </section>
+
+        <section data-pane="replay" class="vm-pane d-none">
+          <div class="vm-pane-head">
+            <label class="form-label small mb-1">Vehicle</label>
+            <select id="rp-vehicle" class="form-select form-select-sm mb-2"></select>
+            <div class="row g-2 mb-2">
+              <div class="col-6"><label class="form-label small mb-1">From</label><input id="rp-from" type="datetime-local" class="form-control form-control-sm"></div>
+              <div class="col-6"><label class="form-label small mb-1">To</label><input id="rp-to" type="datetime-local" class="form-control form-control-sm"></div>
+            </div>
+            <div class="d-flex gap-1 flex-wrap mb-2">
+              <button class="btn btn-outline-secondary btn-sm" data-range="1">1 h</button>
+              <button class="btn btn-outline-secondary btn-sm" data-range="8">8 h</button>
+              <button class="btn btn-outline-secondary btn-sm" data-range="24">24 h</button>
+              <button class="btn btn-outline-secondary btn-sm" data-range="168">7 d</button>
+            </div>
+            <div class="d-flex gap-2 align-items-center mb-2">
+              <label class="small mb-0">Min. stop</label>
+              <select id="rp-minstop" class="form-select form-select-sm" style="width:auto"><option value="2">2 min</option><option value="5" selected>5 min</option><option value="10">10 min</option><option value="30">30 min</option></select>
+              <button id="rp-load" class="btn btn-primary btn-sm ms-auto"><i class="bi bi-play-fill"></i> Load route</button>
+            </div>
+            <label class="vm-sw mb-2"><input type="checkbox" id="rp-snap"><i></i><span>Snap the route to the road</span></label>
+            <div class="d-flex gap-2">
+              <button id="rp-heat" class="btn btn-outline-secondary btn-sm flex-fill"><i class="bi bi-fire"></i> Heatmap (whole fleet)</button>
+              <button id="rp-clear" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-lg"></i></button>
+            </div>
+          </div>
+          <div id="rp-body" class="vm-list px-3"><div class="text-muted small py-3">Choose a vehicle and a period, then load the route. Stops and idling are listed here with their duration and address.</div></div>
+        </section>
+
+        <section data-pane="alerts" class="vm-pane d-none">
+          <div class="vm-pane-head d-flex align-items-center gap-2">
+            <span class="small text-muted">Zone entries and exits</span>
+            <button id="vm-mute" class="btn btn-sm btn-outline-secondary ms-auto" title="Sound on or off"><i class="bi bi-volume-up-fill"></i></button>
+          </div>
+          <div id="vm-alert-list" class="vm-list"></div>
+        </section>
+      </aside>
+
+      <!-- map -->
+      <div class="vm-stage">
+        <div id="map"></div>
+
+        <div class="vm-topbar">
+          <button id="vm-panel-toggle" class="vm-btn" title="Show or hide the side panel"><i class="bi bi-layout-sidebar-inset"></i></button>
+          <form id="vm-search-form" class="vm-search" autocomplete="off">
+            <i class="bi bi-search"></i>
+            <input id="vm-search" placeholder="Search an address or landmark" aria-label="Search an address or landmark">
+            <div id="vm-search-results" class="vm-results d-none"></div>
+          </form>
+          <span id="vm-live" class="vm-pill"><i class="bi bi-circle-fill"></i> Connecting</span>
+          <span id="vm-count" class="vm-pill d-none d-md-inline-flex"></span>
+        </div>
+
+        <div class="vm-tools">
+          <button id="vm-layers-btn" class="vm-btn" title="Map layers"><i class="bi bi-layers-fill"></i></button>
+          <button id="vm-measure" class="vm-btn" title="Measure distance"><i class="bi bi-rulers"></i></button>
+          <button id="vm-fit" class="vm-btn" title="Fit all vehicles"><i class="bi bi-bullseye"></i></button>
+          <button id="vm-follow" class="vm-btn" title="Follow the selected vehicle"><i class="bi bi-crosshair"></i></button>
+          <button id="vm-full" class="vm-btn" title="Full screen"><i class="bi bi-fullscreen"></i></button>
+        </div>
+
+        <div id="vm-layers" class="vm-layers d-none">
+          <div class="fw-semibold small mb-1">Base map</div>
+          <div class="btn-group btn-group-sm w-100 mb-2" id="vm-base">
+            <button class="btn btn-outline-primary active" data-base="street">Street</button>
+            <button class="btn btn-outline-primary" data-base="satellite">Satellite</button>
+            <button class="btn btn-outline-primary" data-base="terrain">Terrain</button>
+          </div>
+          <div class="fw-semibold small mb-1">Overlays</div>
+          <label class="vm-sw"><input type="checkbox" id="ly-cluster" checked><i></i><span>Group nearby vehicles</span></label>
+          <label class="vm-sw"><input type="checkbox" id="ly-zones" checked><i></i><span>Geofences</span></label>
+          <label class="vm-sw"><input type="checkbox" id="ly-pois" checked><i></i><span>Places (depots, fuel…)</span></label>
+          <label class="vm-sw"><input type="checkbox" id="ly-traffic"><i></i><span>Live traffic</span></label>
+          <div id="ly-traffic-note" class="form-text mb-1"></div>
+          <label class="vm-sw"><input type="checkbox" id="ly-weather"><i></i><span>Weather radar</span></label>
+          <div id="ly-weather-note" class="form-text mb-1"></div>
+          <div class="fw-semibold small mt-2 mb-1">Refresh every</div>
+          <select id="vm-refresh" class="form-select form-select-sm">
+            <option value="5">5 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option>
+            <option value="30">30 seconds</option><option value="60">1 minute</option><option value="120">2 minutes</option>
+          </select>
+          <div class="fw-semibold small mt-2 mb-1">Operations</div>
+          <label class="vm-sw"><input type="checkbox" id="ly-routes" checked><i></i><span>Planned routes and destinations</span></label>
+          <label class="vm-sw"><input type="checkbox" id="ly-risk"><i></i><span>High-risk areas (breakdown heat)</span></label>
+          <label class="vm-sw"><input type="checkbox" id="ly-assets" checked><i></i><span>Sensor assets (trailers…)</span></label>
+          <label class="vm-sw"><input type="checkbox" id="ly-lez" checked><i></i><span>Restricted and low-emission zones</span></label>
+          <label class="vm-sw mt-2"><input type="checkbox" id="ly-labels"><i></i><span>Plate labels</span></label>
+          <label class="vm-sw"><input type="checkbox" id="ly-trails"><i></i><span>Recent trails</span></label>
+        </div>
+
+        <div id="vm-advice" class="vm-advice d-none"></div>
+        <div id="vm-measure-box" class="vm-measure d-none"></div>
+        <div id="vm-coords" class="vm-coords">Move the cursor over the map</div>
+        <button id="vm-replay-bar-open" class="d-none"></button>
+
+        <!-- replay controller -->
+        <div id="vm-replay" class="vm-replay d-none">
+          <button id="rp-play" class="vm-btn"><i class="bi bi-play-fill"></i></button>
+          <input id="rp-scrub" type="range" min="0" max="1000" value="0" class="form-range flex-fill">
+          <span id="rp-time" class="small text-nowrap">–</span>
+          <select id="rp-speed" class="form-select form-select-sm" style="width:auto"><option value="1">1×</option><option value="4">4×</option><option value="8" selected>8×</option><option value="16">16×</option><option value="32">32×</option><option value="64">64×</option></select>
+          <button id="rp-close" class="vm-btn"><i class="bi bi-x-lg"></i></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- zone / place / destination form -->
+  <div class="modal fade" id="vm-modal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="vm-modal-title"></h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body" id="vm-modal-body"></div>
+    <div class="modal-footer" id="vm-modal-foot"></div>
+  </div></div></div>
+
+  <div id="vm-toasts" class="vm-toasts"></div>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vendor/leaflet/leaflet.js"></script>
+  <script src="js/vendor/leaflet/leaflet.markercluster.js"></script>
+  <script src="js/vendor/leaflet/leaflet-heat.js"></script>
+  <script src="js/vendor/leaflet/leaflet-geoman.min.js"></script>
+  <script src="js/vendor/socket.io.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-map.js"></script>
+  <script src="js/vtrack-map-adv.js"></script>
+</body>
+</html>

@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V-Track Pro | Run your e-bike and tricycle fleet from one screen</title>
+  <meta name="description" content="V-Track Pro is the fleet and business platform for electric bikes and tricycles in Ghana: live tracking, daily collections in cedis, batteries, contracts, theft protection and clear reports.">
+  <meta property="og:title" content="V-Track Pro: e-bike and tricycle fleet platform for Ghana">
+  <meta property="og:description" content="Track every vehicle, collect every cedi, protect every battery. Built in Ghana, for Ghana.">
+  <meta name="theme-color" content="#0b1f1a">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <style>
+    :root { --g:#0ac072; --g-dark:#079a5b; --g-soft:#e7f8ef; --ink:#0b1f1a; --ink-2:#33423d; --muted:#5b6b65; --line:#e3ebe7; --bg:#fff; --bg-2:#f5f9f7; --gold:#f5b400; --red:#ef4444; --r:20px;
+      --font:"Public Sans",Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }
+    *{box-sizing:border-box} html{scroll-behavior:smooth;scroll-padding-top:80px}
+    body{margin:0;font-family:var(--font);color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    img,svg{max-width:100%} a{color:inherit}
+    .wrap{width:min(1200px,100% - 40px);margin-inline:auto}
+    .eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--g-dark)}
+    .eyebrow::before{content:"";width:22px;height:2px;background:var(--g);border-radius:2px}
+    h1,h2,h3{line-height:1.12;letter-spacing:-.02em;margin:0} h2{font-size:clamp(1.9rem,3.4vw,2.8rem);font-weight:800}
+    .lead{font-size:1.12rem;color:var(--muted);max-width:640px}
+    section{padding:clamp(64px,9vw,112px) 0}
+    .btn-l{display:inline-flex;align-items:center;gap:.55rem;padding:.85rem 1.4rem;border-radius:999px;font-weight:700;text-decoration:none;border:2px solid transparent;transition:transform .15s,box-shadow .15s,background .15s;cursor:pointer;font-size:1rem;font-family:inherit}
+    .btn-l:hover{transform:translateY(-2px)}
+    .btn-g{background:var(--g);color:#04251a;box-shadow:0 10px 28px -10px rgba(10,192,114,.7)} .btn-g:hover{background:#12d683}
+    .btn-o{border-color:rgba(255,255,255,.35);color:#fff} .btn-o:hover{background:rgba(255,255,255,.1)}
+    .btn-d{border-color:var(--line);color:var(--ink);background:#fff} .btn-d:hover{border-color:var(--g)}
+    .flag{height:5px;background:linear-gradient(90deg,#ce1126 0 33.3%,#fcd116 33.3% 66.6%,#006b3f 66.6%)}
+
+    /* nav */
+    .nav{position:fixed;inset:0 0 auto 0;z-index:50;transition:background .25s,box-shadow .25s}
+    .nav .in{display:flex;align-items:center;gap:1.5rem;height:72px}
+    .nav.solid{background:rgba(255,255,255,.93);backdrop-filter:blur(12px);box-shadow:0 1px 0 var(--line)}
+    .brand{display:flex;align-items:center;gap:.6rem;text-decoration:none;font-weight:800;font-size:1.15rem;color:#fff} .nav.solid .brand{color:var(--ink)}
+    .mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--g),#087f4b);display:grid;place-items:center;color:#fff}
+    .links{display:flex;gap:1.6rem;margin-inline:auto} .links a{text-decoration:none;font-weight:600;font-size:.94rem;color:rgba(255,255,255,.85)} .nav.solid .links a{color:var(--ink-2)} .links a:hover{color:var(--g)}
+    .nav .cta{display:flex;gap:.9rem;align-items:center} .nav .signin{font-weight:600;font-size:.94rem;text-decoration:none;color:rgba(255,255,255,.9)} .nav.solid .signin{color:var(--ink-2)}
+    .burger{display:none;margin-left:auto;background:none;border:0;color:#fff;font-size:1.7rem} .nav.solid .burger{color:var(--ink)}
+    @media(max-width:960px){.links,.nav .cta .signin{display:none}.burger{display:block}.nav.open{background:#0b1f1a}.nav.open .links{display:flex;position:absolute;top:72px;inset-inline:0;flex-direction:column;background:#0b1f1a;padding:1rem 20px 1.5rem;gap:1rem}.nav.open .links a{color:#fff;font-size:1.1rem}}
+
+    /* hero */
+    .hero{position:relative;background:radial-gradient(1100px 600px at 85% 10%,rgba(10,192,114,.28),transparent 60%),radial-gradient(800px 500px at 0 80%,rgba(245,180,0,.12),transparent 55%),#0b1f1a;color:#fff;padding:128px 0 0;overflow:hidden}
+    .hero-grid{display:grid;grid-template-columns:1.02fr 1fr;gap:clamp(24px,4vw,64px);align-items:center}
+    @media(max-width:980px){.hero-grid{grid-template-columns:1fr}}
+    .pill{display:inline-flex;align-items:center;gap:.55rem;padding:.35rem .9rem .35rem .4rem;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-size:.85rem;font-weight:600;color:#d8efe5}
+    .pill b{background:var(--gold);color:#3a2a00;padding:.12rem .55rem;border-radius:999px;font-size:.72rem;letter-spacing:.06em}
+    .hero h1{font-size:clamp(2.4rem,5vw,4.1rem);font-weight:800;margin:1.2rem 0 1.1rem}
+    .hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--g),#8bf0c1);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .hero .lead{color:#b9cdc5;font-size:1.15rem}
+    .hero-cta{display:flex;flex-wrap:wrap;gap:.8rem;margin:2rem 0 1.2rem}
+    .hero-note{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;font-size:.9rem;color:#9db5ab} .hero-note span::before{content:"✓";color:var(--g);font-weight:800;margin-right:.4rem}
+    .hero-art{position:relative;padding-bottom:40px}
+    .scene{position:relative;aspect-ratio:640/540;border-radius:30px;overflow:hidden;box-shadow:0 50px 100px -30px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.12);background:#143d33}
+    .scene>svg.bg{position:absolute;inset:0;width:100%;height:100%}
+    .road-dash{animation:dash 1.1s linear infinite} @keyframes dash{to{stroke-dashoffset:-60}}
+    .veh{position:absolute;left:0;will-change:transform}
+    .veh svg{display:block;width:100%;height:auto;overflow:visible}
+    .wheel{transform-box:fill-box;transform-origin:center;animation:spin .8s linear infinite} @keyframes spin{to{transform:rotate(360deg)}}
+    .trike{bottom:7%;width:60%;animation:drive 16s linear infinite}
+    .ebike{bottom:1.5%;width:41%;animation:drive 10s linear infinite;animation-delay:-6s;z-index:3}
+    @keyframes drive{from{transform:translateX(-120%)}to{transform:translateX(185%)}}
+    .pin{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:4px;background:#fff;color:var(--ink);border-radius:10px;padding:.3rem .6rem;font-size:.68rem;font-weight:700;white-space:nowrap;box-shadow:0 10px 24px rgba(0,0,0,.35);line-height:1.25}
+    .pin::after{content:"";position:absolute;left:50%;top:100%;margin-left:-5px;border:5px solid transparent;border-top-color:#fff}
+    .pin i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--g);margin-right:.35rem;box-shadow:0 0 0 0 rgba(10,192,114,.7);animation:ping 1.6s infinite}
+    .pin small{display:block;font-weight:600;color:var(--muted);font-size:.62rem}
+    @keyframes ping{70%{box-shadow:0 0 0 8px rgba(10,192,114,0)}100%{box-shadow:0 0 0 0 rgba(10,192,114,0)}}
+    .float{position:absolute;background:#fff;color:var(--ink);border-radius:14px;padding:.75rem .95rem;box-shadow:0 20px 50px rgba(0,0,0,.35);display:flex;gap:.7rem;align-items:center;font-size:.8rem;line-height:1.25;z-index:5;animation:bob 6s ease-in-out infinite}
+    .float .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:1.1rem} .float b{display:block;font-size:.98rem}
+    .f1{left:-16px;top:12%}.f1 .ic{background:var(--g-soft);color:var(--g-dark)} .f2{right:-14px;top:34%;animation-delay:-2s}.f2 .ic{background:#fff3d6;color:#a37400} .f3{left:4%;bottom:0;animation-delay:-4s}.f3 .ic{background:#fde4e4;color:#c0292b}
+    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    @media(max-width:640px){.f1{left:6px}.f2{right:6px}.float{font-size:.72rem;padding:.55rem .7rem}.float .ic{width:30px;height:30px}}
+
+    /* strip */
+    .strip{background:var(--bg-2);border-bottom:1px solid var(--line);padding:28px 0}
+    .strip .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1.2rem}
+    .strip .it{display:flex;gap:.8rem;align-items:center;font-weight:600;font-size:.94rem} .strip .it i{font-size:1.5rem;color:var(--g-dark)} .strip small{display:block;font-weight:500;color:var(--muted)}
+
+    /* photo slots */
+    .ph{position:relative;overflow:hidden;border-radius:var(--r);background:#0f3b2d;isolation:isolate}
+    .ph img.photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+    .ph svg.art{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+    .ph .cap{position:absolute;z-index:3;left:14px;bottom:12px;right:14px;color:#fff;font-size:.82rem;font-weight:700;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+    .ph.has-photo::after{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(transparent 55%,rgba(0,0,0,.6));pointer-events:none}
+
+    /* who */
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,72px);align-items:center} @media(max-width:900px){.split{grid-template-columns:1fr}}
+    .who{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.2rem;margin-top:2.6rem}
+    .who .c{border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:#fff;transition:transform .2s,box-shadow .2s;display:flex;flex-direction:column}
+    .who .c:hover{transform:translateY(-5px);box-shadow:0 24px 50px -24px rgba(11,31,26,.35)}
+    .who .ph{border-radius:0;aspect-ratio:4/3} .who .t{padding:1.2rem 1.3rem 1.4rem} .who h3{font-size:1.18rem;margin-bottom:.4rem} .who p{margin:0;color:var(--muted);font-size:.95rem}
+
+    /* pains */
+    .pains{background:var(--ink);color:#fff} .pains h2{color:#fff} .pains .lead{color:#a9bdb5}
+    .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-top:2.4rem}
+    .pc{border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:1.4rem;background:rgba(255,255,255,.04);display:flex;flex-direction:column}
+    .pc .x{color:#ff8a8a;font-weight:700;font-size:.84rem;margin-bottom:.5rem;display:flex;gap:.4rem;align-items:center}
+    .pc .v{color:#7ff0bb;font-weight:700;font-size:.84rem;margin-top:auto;padding-top:1rem;border-top:1px dashed rgba(255,255,255,.18);display:flex;gap:.4rem}
+    .pc h3{font-size:1.1rem;font-weight:700;margin-bottom:.35rem} .pc p{color:#b2c5bd;margin:0 0 1rem;font-size:.93rem}
+
+    /* bento */
+    .fhead{display:flex;justify-content:space-between;align-items:end;gap:2rem;flex-wrap:wrap;margin-bottom:2.6rem}
+    .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:1.1rem}
+    .bc{grid-column:span 4;border:1px solid var(--line);border-radius:var(--r);padding:1.5rem;background:#fff;transition:transform .2s,border-color .2s,box-shadow .2s;position:relative;overflow:hidden;display:flex;flex-direction:column}
+    .bc:hover{transform:translateY(-4px);border-color:var(--g);box-shadow:0 22px 44px -26px rgba(10,192,114,.6)}
+    .bc.w6{grid-column:span 6} .bc.w8{grid-column:span 8} .bc.dark{background:var(--ink);color:#fff;border-color:var(--ink)} .bc.dark p{color:#a9bdb5} .bc.tint{background:linear-gradient(160deg,#f1fbf6,#fff)}
+    .bc .ic{width:46px;height:46px;border-radius:13px;background:var(--g-soft);color:var(--g-dark);display:grid;place-items:center;font-size:1.35rem;margin-bottom:.9rem} .bc.dark .ic{background:rgba(10,192,114,.18);color:var(--g)}
+    .bc h3{font-size:1.15rem;margin-bottom:.4rem} .bc p{color:var(--muted);margin:0;font-size:.95rem}
+    .viz{margin-top:1.2rem;flex:1;display:flex;align-items:flex-end}
+    @media(max-width:1000px){.bc,.bc.w6,.bc.w8{grid-column:span 6}} @media(max-width:640px){.bc,.bc.w6,.bc.w8{grid-column:span 12}}
+    /* mini UIs */
+    .mini{width:100%;border-radius:14px;background:#f2f7f5;border:1px solid var(--line);padding:.9rem;font-size:.78rem}
+    .bc.dark .mini{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
+    .mapmini{position:relative;height:210px;border-radius:14px;overflow:hidden;background:#e8f1ed;border:1px solid var(--line);width:100%}
+    .mapmini svg{position:absolute;inset:0;width:100%;height:100%}
+    .mp{position:absolute;transform:translate(-50%,-100%);font-size:1.5rem;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
+    .mp.g{color:var(--g-dark)} .mp.a{color:#e09b00} .mp.r{color:#d33}
+    .mp::after{content:"";position:absolute;left:50%;bottom:-6px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:currentColor;opacity:.25;animation:ring 2s infinite}
+    @keyframes ring{0%{transform:scale(.4);opacity:.5}100%{transform:scale(2.4);opacity:0}}
+    .mcard{position:absolute;right:12px;top:12px;background:#fff;border-radius:12px;padding:.55rem .75rem;box-shadow:0 12px 30px rgba(0,0,0,.18);font-size:.72rem;line-height:1.3}
+    .tl{list-style:none;margin:0;padding:0;width:100%} .tl li{display:flex;gap:.7rem;align-items:flex-start;padding:.45rem 0;border-bottom:1px dashed var(--line);font-size:.82rem} .tl li:last-child{border:0}
+    .tl .d{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:.8rem} .tl small{display:block;color:var(--muted)}
+    .bars{display:flex;align-items:flex-end;gap:6px;height:110px;width:100%} .bars i{flex:1;border-radius:5px 5px 0 0;background:linear-gradient(var(--g),#0a8f58);transition:height .9s cubic-bezier(.2,.8,.2,1);height:4px}
+    .bars i.lo{background:linear-gradient(#ffd166,#e8a600)} .in .bars i,.bars.go i{height:var(--h)}
+    .gauge{position:relative;width:128px;height:128px;margin:0 auto} .gauge svg{transform:rotate(-90deg)} .gauge b{position:absolute;inset:0;display:grid;place-items:center;font-size:1.5rem}
+    .sw{display:flex;align-items:center;gap:.8rem;width:100%;background:rgba(255,255,255,.08);border-radius:14px;padding:.8rem 1rem}
+    .tog{width:52px;height:30px;border-radius:99px;background:#ef4444;position:relative;flex:0 0 auto;animation:tog 6s infinite} .tog::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;animation:knob 6s infinite}
+    @keyframes tog{0%,45%{background:#4b5b55}55%,95%{background:#ef4444}100%{background:#4b5b55}} @keyframes knob{0%,45%{transform:translateX(0)}55%,95%{transform:translateX(22px)}100%{transform:translateX(0)}}
+    .steps3{display:flex;gap:.4rem;width:100%;margin-top:.7rem} .steps3 span{flex:1;text-align:center;font-size:.68rem;padding:.3rem 0;border-radius:8px;background:rgba(255,255,255,.08);color:#a9bdb5} .steps3 span.on{background:var(--g);color:#04251a;font-weight:700}
+
+    /* tour (drawn interface) */
+    .tour{background:var(--bg-2)}
+    .tabs{display:flex;flex-wrap:wrap;gap:.5rem;margin:2rem 0 1.4rem}
+    .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:.55rem 1.1rem;font-weight:700;font-size:.92rem;cursor:pointer;font-family:inherit;color:var(--ink-2);display:inline-flex;gap:.45rem;align-items:center}
+    .tab[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+    .tourbox{display:grid;grid-template-columns:340px 1fr;gap:2.2rem;align-items:center} @media(max-width:960px){.tourbox{grid-template-columns:1fr}}
+    .tourbox h3{font-size:1.6rem;margin-bottom:.6rem} .tourbox p{color:var(--muted)} .tourbox ul{padding:0;list-style:none;margin:1rem 0 0} .tourbox li{padding-left:1.5rem;position:relative;margin:.4rem 0} .tourbox li::before{content:"✓";position:absolute;left:0;color:var(--g-dark);font-weight:800}
+    .dev{background:#fff;border-radius:18px;border:1px solid var(--line);box-shadow:0 40px 80px -36px rgba(11,31,26,.5);overflow:hidden}
+    .dev .top{display:flex;align-items:center;gap:7px;padding:10px 14px;background:#eef3f1;border-bottom:1px solid var(--line)} .dev .top i{width:10px;height:10px;border-radius:50%;background:#cfd8d4}
+    .dev .top span{margin-left:10px;font-size:.72rem;color:#7d8d87;background:#fff;border-radius:6px;padding:2px 12px}
+    .dev .body{padding:1.2rem;display:grid;gap:1rem}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.7rem} .kpi{border:1px solid var(--line);border-radius:12px;padding:.7rem .85rem} .kpi small{color:var(--muted);display:block;font-size:.72rem} .kpi b{font-size:1.25rem}
+    .row2{display:grid;grid-template-columns:1.3fr 1fr;gap:1rem} @media(max-width:700px){.row2{grid-template-columns:1fr}}
+    .box{border:1px solid var(--line);border-radius:12px;padding:.9rem} .box h4{font-size:.85rem;margin:0 0 .6rem}
+    .att{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:10px;margin-bottom:.4rem;font-size:.8rem} .att.r{background:#fde8e8} .att.y{background:#fff4d6} .att.b{background:#e5f1ff} .att i{font-size:1.05rem}
+    .badge2{display:inline-block;padding:.1rem .55rem;border-radius:99px;font-size:.68rem;font-weight:700;background:var(--g-soft);color:var(--g-dark)}
+    .tbl{width:100%;border-collapse:collapse;font-size:.8rem} .tbl th{text-align:left;color:var(--muted);font-weight:600;padding:.4rem .3rem;border-bottom:1px solid var(--line)} .tbl td{padding:.5rem .3rem;border-bottom:1px solid var(--line)}
+    .prog{height:8px;border-radius:99px;background:#e6efeb;overflow:hidden;min-width:70px} .prog i{display:block;height:100%;background:var(--g);border-radius:99px}
+
+    /* steps / models / trust */
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1.2rem;margin-top:2.8rem;counter-reset:s}
+    .st{position:relative;padding:1.8rem 1.4rem 1.4rem;border-radius:var(--r);background:#fff;border:1px solid var(--line);counter-increment:s}
+    .st::before{content:counter(s);position:absolute;top:-18px;left:1.3rem;width:38px;height:38px;border-radius:50%;background:var(--g);color:#04251a;font-weight:800;display:grid;place-items:center;box-shadow:0 8px 20px -6px rgba(10,192,114,.8)}
+    .st h3{font-size:1.1rem;margin:.4rem 0 .35rem} .st p{margin:0;color:var(--muted);font-size:.94rem}
+    .models{background:linear-gradient(180deg,#fff,var(--g-soft))}
+    .mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;margin-top:2.6rem}
+    .mc{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:1.8rem;position:relative}
+    .mc.hot{border:2px solid var(--g);box-shadow:0 30px 60px -30px rgba(10,192,114,.55)}
+    .mc.hot::before{content:"Most popular with rider-hire operators";position:absolute;top:-13px;left:1.4rem;background:var(--g);color:#04251a;font-size:.72rem;font-weight:800;padding:.2rem .8rem;border-radius:999px}
+    .mc h3{font-size:1.35rem;margin-bottom:.3rem} .mc .sub{color:var(--muted);margin-bottom:1rem} .mc ul{list-style:none;padding:0;margin:0 0 1.3rem} .mc li{padding:.45rem 0 .45rem 1.6rem;position:relative;border-bottom:1px solid var(--line);font-size:.94rem} .mc li::before{content:"✓";position:absolute;left:0;color:var(--g-dark);font-weight:800}
+    .tgrid{display:grid;gap:1.4rem;margin-top:2.2rem} .tg{display:flex;gap:1rem} .tg i{flex:0 0 46px;height:46px;border-radius:12px;background:var(--ink);color:var(--g);display:grid;place-items:center;font-size:1.3rem} .tg h3{font-size:1.02rem;margin-bottom:.2rem} .tg p{margin:0;color:var(--muted);font-size:.92rem}
+    #testimonials[hidden],#hardware[hidden]{display:none}
+    .quotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;margin-top:2.2rem} .qc{border:1px solid var(--line);border-radius:var(--r);padding:1.6rem;background:#fff} .qc .stars{color:var(--gold);letter-spacing:2px}
+    .hw{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.2rem;margin-top:2.2rem} .hw .c{border:1px solid var(--line);border-radius:var(--r);padding:1.4rem;background:#fff} .hw .c i{font-size:1.6rem;color:var(--g-dark)}
+    .faq details{border-bottom:1px solid var(--line);padding:1.1rem 0} .faq summary{font-weight:700;font-size:1.05rem;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:1rem} .faq summary::-webkit-details-marker{display:none}
+    .faq summary::after{content:"+";font-size:1.5rem;line-height:1;color:var(--g-dark);transition:transform .2s} .faq details[open] summary::after{transform:rotate(45deg)} .faq p{margin:.7rem 0 0;color:var(--muted)}
+
+    /* contact */
+    .contact{background:radial-gradient(900px 500px at 100% 0,rgba(10,192,114,.3),transparent 60%),var(--ink);color:#fff} .contact .lead{color:#a9bdb5}
+    .form{background:#fff;color:var(--ink);border-radius:22px;padding:clamp(1.4rem,3vw,2.2rem);box-shadow:0 40px 80px -30px rgba(0,0,0,.6)}
+    .form .g2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem} @media(max-width:560px){.form .g2{grid-template-columns:1fr}}
+    .form label{display:block;font-size:.82rem;font-weight:700;margin:.9rem 0 .3rem;color:var(--ink-2)}
+    .form input,.form select,.form textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:.75rem .9rem;font:inherit;background:#fff;color:var(--ink)}
+    .form input:focus,.form textarea:focus{outline:0;border-color:var(--g);box-shadow:0 0 0 4px rgba(10,192,114,.18)}
+    .form .chk{display:flex;gap:.6rem;align-items:flex-start;font-weight:500;font-size:.85rem;margin-top:1rem} .form .chk input{width:auto;margin-top:.25rem}
+    .form .err{background:#fde4e4;color:#8a1c1e;padding:.7rem .9rem;border-radius:10px;font-size:.9rem;margin-top:1rem} .form .ok{text-align:center;padding:2rem 0} .form .ok i{font-size:3rem;color:var(--g)}
+    .cl{display:grid;gap:1rem;margin-top:2rem} .cl a{display:flex;gap:.9rem;align-items:center;text-decoration:none;color:#fff;font-weight:600} .cl i{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:1.25rem;color:var(--g)} .cl small{display:block;color:#9db5ab;font-weight:500}
+    footer{background:#07140f;color:#8ea49b;padding:56px 0 30px;font-size:.92rem} footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2rem} @media(max-width:760px){footer .cols{grid-template-columns:1fr 1fr}}
+    footer h4{color:#fff;font-size:.9rem;margin:0 0 .8rem} footer a{text-decoration:none;display:block;padding:.2rem 0} footer a:hover{color:var(--g)} footer .bot{border-top:1px solid rgba(255,255,255,.1);margin-top:2rem;padding-top:1.4rem;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+    .wa{position:fixed;right:18px;bottom:18px;z-index:60;width:56px;height:56px;border-radius:50%;background:#25d366;color:#fff;display:grid;place-items:center;font-size:1.7rem;box-shadow:0 14px 30px -8px rgba(37,211,102,.7);text-decoration:none}
+    .rv{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease} .rv.in{opacity:1;transform:none}
+    @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}.float,.veh,.wheel,.road-dash,.pin i,.mp::after,.tog,.tog::after{animation:none!important}.trike{transform:translateX(70%)}.ebike{transform:translateX(150%)}html{scroll-behavior:auto}.bars i{transition:none}}
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d3b33"/><stop offset=".55" stop-color="#1f6b52"/><stop offset=".82" stop-color="#e8a23a"/><stop offset="1" stop-color="#f6c76a"/></linearGradient>
+      <radialGradient id="gSun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#ffd166" stop-opacity=".9"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient>
+      <linearGradient id="gFrame" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#12d683"/><stop offset="1" stop-color="#079a5b"/></linearGradient>
+      <linearGradient id="gBox" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#15e08b"/><stop offset="1" stop-color="#0a9a5c"/></linearGradient>
+      <!-- e-bike: wheels spin, frame stays -->
+      <symbol id="ebike" viewBox="0 0 300 190">
+        <ellipse cx="150" cy="176" rx="120" ry="7" fill="#000" opacity=".25"/>
+        <g class="wheel"><circle cx="64" cy="128" r="44" fill="none" stroke="#10201b" stroke-width="9"/><circle cx="64" cy="128" r="37" fill="none" stroke="#b8c7c1" stroke-width="2"/><g stroke="#8fa39b" stroke-width="1.6"><path d="M64 91V165M27 128H101M38 102L90 154M90 102L38 154"/></g></g>
+        <g class="wheel"><circle cx="238" cy="128" r="44" fill="none" stroke="#10201b" stroke-width="9"/><circle cx="238" cy="128" r="37" fill="none" stroke="#b8c7c1" stroke-width="2"/><g stroke="#8fa39b" stroke-width="1.6"><path d="M238 91V165M201 128H275M212 102L264 154M264 102L212 154"/></g></g>
+        <g fill="none" stroke="url(#gFrame)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M64 128L128 128 112 72 198 70 128 128"/><path d="M198 70L238 128"/><path d="M112 72L64 128"/></g>
+        <rect x="118" y="82" width="62" height="20" rx="8" transform="rotate(-28 149 92)" fill="#10201b"/><path d="M146 84l-8 16h8l-4 12 14-18h-8l5-10z" fill="#ffd166" transform="rotate(-28 149 92) translate(2 -4)"/>
+        <circle cx="64" cy="128" r="11" fill="#10201b"/><circle cx="64" cy="128" r="4" fill="#ffd166"/>
+        <path d="M98 66h30" stroke="#10201b" stroke-width="9" stroke-linecap="round"/><path d="M110 72v-6" stroke="#10201b" stroke-width="5"/>
+        <path d="M198 70l-4-24M188 46h28" stroke="#10201b" stroke-width="6" stroke-linecap="round"/><path d="M216 50a9 7 0 0 1 12 6" stroke="#ffd166" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <rect x="126" y="150" width="16" height="6" rx="3" fill="#10201b"/>
+      </symbol>
+      <!-- cargo tricycle -->
+      <symbol id="trike" viewBox="0 0 380 200">
+        <ellipse cx="195" cy="188" rx="170" ry="8" fill="#000" opacity=".25"/>
+        <g class="wheel"><circle cx="70" cy="146" r="38" fill="none" stroke="#10201b" stroke-width="10"/><circle cx="70" cy="146" r="30" fill="none" stroke="#b8c7c1" stroke-width="2"/><g stroke="#8fa39b" stroke-width="1.6"><path d="M70 114V178M38 146H102M47 123L93 169M93 123L47 169"/></g></g>
+        <g class="wheel"><circle cx="262" cy="150" r="38" fill="none" stroke="#10201b" stroke-width="10"/><circle cx="262" cy="150" r="30" fill="none" stroke="#b8c7c1" stroke-width="2"/><g stroke="#8fa39b" stroke-width="1.6"><path d="M262 118V182M230 150H294M239 127L285 173M285 127L239 173"/></g></g>
+        <g class="wheel"><circle cx="328" cy="150" r="38" fill="none" stroke="#0a1613" stroke-width="10"/><circle cx="328" cy="150" r="30" fill="none" stroke="#9fb1aa" stroke-width="2"/><g stroke="#7f938b" stroke-width="1.6"><path d="M328 118V182M296 150H360M305 127L351 173M351 127L305 173"/></g></g>
+        <rect x="176" y="62" width="196" height="76" rx="9" fill="url(#gBox)"/><rect x="176" y="62" width="196" height="12" rx="6" fill="#0b6e43" opacity=".55"/>
+        <g fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"><path d="M222 78v56M268 78v56M314 78v56"/></g>
+        <circle cx="206" cy="104" r="13" fill="#0b1f1a"/><path d="M200 104h12M206 98v12" stroke="#12d683" stroke-width="3" stroke-linecap="round"/><text x="228" y="110" font-family="Public Sans,Arial,sans-serif" font-weight="800" font-size="17" fill="#fff" letter-spacing="1">V-TRACK</text>
+        <path d="M70 146L96 84 150 84 168 146" fill="none" stroke="#10201b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M88 40h74l10 44H78z" fill="#10201b" opacity=".95"/><path d="M96 46h58l7 32H88z" fill="#8bd8f0" opacity=".55"/>
+        <path d="M72 40h104" stroke="#ffd166" stroke-width="7" stroke-linecap="round"/>
+        <path d="M96 84l-6-22M80 62h22" stroke="#10201b" stroke-width="6" stroke-linecap="round"/>
+        <rect x="116" y="96" width="46" height="26" rx="8" fill="#ffd166"/><path d="M142 99l-8 12h6l-3 10 11-14h-7l4-8z" fill="#10201b"/>
+        <circle cx="54" cy="104" r="6" fill="#fff3c4"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="nav" id="nav">
+    <div class="wrap in">
+      <a class="brand" href="#top"><span class="mark"><i class="bi bi-signpost-split"></i></span>V-Track Pro</a>
+      <nav class="links" id="links" aria-label="Main"><a href="#who">Who it is for</a><a href="#features">Features</a><a href="#tour">Inside the app</a><a href="#models">Business models</a><a href="#faq">FAQ</a></nav>
+      <div class="cta"><a class="signin" href="../app/login.html">Sign in</a><a class="btn-l btn-g" href="#quote" style="padding:.6rem 1.15rem">Get a quote</a></div>
+      <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><i class="bi bi-list"></i></button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="pill"><b>NEW</b> Vehicle history, collections and battery tracking</span>
+          <h1>Run your e-bike and tricycle fleet <em>from one screen.</em></h1>
+          <p class="lead">Know where every vehicle is, collect every cedi, and keep every battery and contract under control. Built in Ghana, for the way riders, hubs and owners actually work.</p>
+          <div class="hero-cta"><a class="btn-l btn-g" href="#quote"><i class="bi bi-chat-dots"></i>Get a free quote</a><a class="btn-l btn-o" href="#tour"><i class="bi bi-play-circle"></i>See inside the app</a></div>
+          <div class="hero-note"><span>Cedi-first money</span><span>Mobile money ready</span><span>GT06, TK103 and Teltonika trackers</span></div>
+        </div>
+        <div class="hero-art">
+          <div class="scene" aria-label="Illustration: a cargo tricycle and an e-bike driving through a city street, each tracked live">
+            <svg class="bg" viewBox="0 0 640 540" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <rect width="640" height="540" fill="url(#gSky)"/>
+              <circle cx="470" cy="300" r="150" fill="url(#gSun)"/><circle cx="470" cy="300" r="46" fill="#fff3c4"/>
+              <g fill="#0f4a3c" opacity=".55"><rect x="0" y="260" width="60" height="150"/><rect x="70" y="230" width="48" height="180"/><rect x="128" y="280" width="70" height="130"/><rect x="210" y="210" width="52" height="200"/><rect x="272" y="270" width="60" height="140"/><rect x="520" y="250" width="56" height="160"/><rect x="586" y="220" width="54" height="190"/></g>
+              <g fill="#0a2f27" opacity=".92"><rect x="-10" y="300" width="80" height="130"/><rect x="82" y="330" width="56" height="100"/><rect x="150" y="290" width="62" height="140"/><rect x="226" y="320" width="84" height="110"/><rect x="330" y="340" width="70" height="90"/><rect x="540" y="310" width="70" height="120"/><rect x="590" y="280" width="60" height="150"/></g>
+              <g fill="#ffd166" opacity=".8"><rect x="162" y="304" width="7" height="9"/><rect x="178" y="304" width="7" height="9"/><rect x="162" y="324" width="7" height="9"/><rect x="598" y="296" width="7" height="9"/><rect x="614" y="316" width="7" height="9"/><rect x="552" y="326" width="7" height="9"/><rect x="236" y="336" width="7" height="9"/><rect x="262" y="352" width="7" height="9"/></g>
+              <!-- palms -->
+              <g stroke="#06201a" stroke-width="5" stroke-linecap="round" fill="none"><path d="M404 440Q410 390 400 350"/><path d="M60 440Q52 400 62 368"/></g>
+              <g fill="#0b3a2d"><path d="M400 350q-40-6-52 18 30-10 52-18zm0 0q40-6 52 18-30-10-52-18zm0 0q-20-30-52-22 34 6 52 22zm0 0q20-30 52-22-34 6-52 22z"/><path d="M62 368q-38-6-50 16 30-8 50-16zm0 0q38-6 50 16-30-8-50-16zm0 0q-18-28-48-20 32 4 48 20zm0 0q18-28 48-20-32 4-48 20z"/></g>
+              <rect y="430" width="640" height="110" fill="#1a2723"/><rect y="430" width="640" height="10" fill="#2c3b36"/>
+              <rect y="440" width="640" height="3" fill="#ffd166" opacity=".5"/>
+              <line class="road-dash" x1="0" y1="494" x2="640" y2="494" stroke="#e6efe9" stroke-opacity=".7" stroke-width="5" stroke-dasharray="30 30"/>
+            </svg>
+            <div class="veh trike"><div class="pin"><i></i>GR 4471-26<small>28 km/h · Rider 1</small></div><svg viewBox="0 0 380 200"><use href="#trike"/></svg></div>
+            <div class="veh ebike"><div class="pin" style="background:#fff3d6"><i style="background:#e0a000"></i>AS 2210-26<small>Battery 82%</small></div><svg viewBox="0 0 300 190"><use href="#ebike"/></svg></div>
+          </div>
+          <div class="float f1"><span class="ic"><i class="bi bi-cash-coin"></i></span><div>Collected today<b>GH₵ 639</b></div></div>
+          <div class="float f2"><span class="ic"><i class="bi bi-battery-charging"></i></span><div>Battery swapped<b>in 2 minutes</b></div></div>
+          <div class="float f3"><span class="ic"><i class="bi bi-shield-check"></i></span><div>Safe lock ready<b>Only when stopped</b></div></div>
+        </div>
+      </div>
+      <div class="flag" style="margin-top:56px"></div>
+    </section>
+
+    <div class="strip"><div class="wrap row">
+      <div class="it"><i class="bi bi-geo-alt-fill"></i><div>Live location<small>on a map your team can read</small></div></div>
+      <div class="it"><i class="bi bi-phone-fill"></i><div>Mobile money<small>collections recorded in cedis</small></div></div>
+      <div class="it"><i class="bi bi-battery-charging"></i><div>Battery swaps<small>health and cycles per battery</small></div></div>
+      <div class="it"><i class="bi bi-shield-lock-fill"></i><div>Theft protection<small>remote lock and recovery cases</small></div></div>
+      <div class="it"><i class="bi bi-file-earmark-text-fill"></i><div>Contracts<small>lease, Work-and-Pay, outright</small></div></div>
+    </div></div>
+
+    <section id="who"><div class="wrap">
+      <span class="eyebrow">Who it is for</span>
+      <h2 style="margin:.7rem 0 1rem;max-width:760px">One platform for everyone who touches the vehicle</h2>
+      <p class="lead">From the owner who funds the fleet to the rider on the road, everyone sees what they need and nothing they should not.</p>
+      <div class="who" id="who-grid"></div>
+    </div></section>
+
+    <section class="pains"><div class="wrap">
+      <span class="eyebrow" style="color:#7ff0bb">The everyday problems</span>
+      <h2 style="margin:.7rem 0 1rem;max-width:780px">Fleets leak money in small ways, every single day</h2>
+      <p class="lead">V-Track Pro closes the gaps that notebooks, WhatsApp groups and spreadsheets leave open.</p>
+      <div class="pgrid">
+        <div class="pc rv"><div class="x"><i class="bi bi-x-circle-fill"></i>Before</div><h3>"Where is that bike?"</h3><p>Calls, guesses and bikes parked in places nobody agreed to.</p><div class="v"><i class="bi bi-check-circle-fill"></i>Live map with zones and alerts</div></div>
+        <div class="pc rv"><div class="x"><i class="bi bi-x-circle-fill"></i>Before</div><h3>Daily money that never adds up</h3><p>Cash and MoMo in different places, shortfalls found weeks later.</p><div class="v"><i class="bi bi-check-circle-fill"></i>Daily settlements and shortfall tracking</div></div>
+        <div class="pc rv"><div class="x"><i class="bi bi-x-circle-fill"></i>Before</div><h3>Batteries that vanish or die early</h3><p>No record of who has which battery or how worn it is.</p><div class="v"><i class="bi bi-check-circle-fill"></i>Serial, health, cycles and swap history</div></div>
+        <div class="pc rv"><div class="x"><i class="bi bi-x-circle-fill"></i>Before</div><h3>Theft and unpaid vehicles</h3><p>By the time you know, the vehicle is gone or weeks behind.</p><div class="v"><i class="bi bi-check-circle-fill"></i>Warnings, safe remote lock, recovery cases</div></div>
+      </div>
+    </div></section>
+
+    <section id="features"><div class="wrap">
+      <div class="fhead"><div><span class="eyebrow">Everything in one place</span><h2 style="margin-top:.7rem;max-width:700px">Built for the whole business, not just the map</h2></div><a class="btn-l btn-d" href="#quote">Talk to us <i class="bi bi-arrow-right"></i></a></div>
+      <div class="bento">
+        <div class="bc w8 tint rv"><div class="ic"><i class="bi bi-geo-alt"></i></div><h3>Live map that thinks ahead</h3><p>Every vehicle on the road with its rider, speed and battery. Draw zones, import hundreds of customer sites, and get arrival times and delay warnings.</p>
+          <div class="viz"><div class="mapmini" aria-hidden="true"><svg viewBox="0 0 600 210" preserveAspectRatio="xMidYMid slice"><rect width="600" height="210" fill="#e8f1ed"/><g stroke="#fff" stroke-width="14" fill="none"><path d="M-10 60H610M-10 150H610M120 -10V220M300 -10V220M470 -10V220"/></g><g stroke="#d3e2db" stroke-width="3" fill="none"><path d="M-10 105H610M210 -10V220M385 -10V220"/></g><circle cx="380" cy="110" r="52" fill="#0ac072" fill-opacity=".14" stroke="#0ac072" stroke-width="2" stroke-dasharray="6 5"/><path d="M80 150 H300 V60 H470" fill="none" stroke="#0ac072" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 9"><animate attributeName="stroke-dashoffset" from="38" to="0" dur="1.2s" repeatCount="indefinite"/></path></svg>
+          <i class="mp g bi bi-geo-alt-fill" style="left:80px;top:150px"></i><i class="mp a bi bi-geo-alt-fill" style="left:300px;top:150px"></i><i class="mp g bi bi-geo-alt-fill" style="left:470px;top:62px"></i><i class="mp r bi bi-geo-alt-fill" style="left:392px;top:118px"></i>
+          <div class="mcard"><b>GR 4472-26</b><br><span style="color:#079a5b">● Moving</span> 27 km/h<br>ETA to customer 6 min</div></div></div></div>
+        <div class="bc dark rv"><div class="ic"><i class="bi bi-lock"></i></div><h3>Safe remote lock</h3><p>Warn first, then lock only when the vehicle is stopped.</p>
+          <div class="viz" style="flex-direction:column;align-items:stretch"><div class="sw"><span class="tog"></span><div style="font-size:.85rem">Immobiliser<br><small style="color:#a9bdb5">Logged with a reason</small></div></div><div class="steps3"><span class="on">Warning</span><span class="on">Stopped</span><span>Locked</span></div></div></div>
+
+        <div class="bc rv"><div class="ic"><i class="bi bi-cash-coin"></i></div><h3>Collections and settlements</h3><p>Record daily remittance, see who is behind, close each day.</p>
+          <div class="viz"><div class="bars" id="bars1"><i style="--h:60%"></i><i style="--h:72%"></i><i class="lo" style="--h:38%"></i><i style="--h:80%"></i><i style="--h:68%"></i><i style="--h:90%"></i><i class="lo" style="--h:46%"></i><i style="--h:84%"></i></div></div></div>
+        <div class="bc rv"><div class="ic"><i class="bi bi-battery-charging"></i></div><h3>Batteries and swaps</h3><p>Every battery by serial number, health and cycles.</p>
+          <div class="viz"><div class="gauge"><svg viewBox="0 0 120 120" width="128" height="128"><circle cx="60" cy="60" r="50" fill="none" stroke="#e6efeb" stroke-width="12"/><circle cx="60" cy="60" r="50" fill="none" stroke="#0ac072" stroke-width="12" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="50"/></svg><b>84%</b></div></div></div>
+        <div class="bc w6 rv"><div class="ic"><i class="bi bi-clock-history"></i></div><h3>A full history for every vehicle</h3><p>Trips, alerts, repairs, riders and money on one timeline, with findings in plain words.</p>
+          <div class="viz"><ul class="tl"><li><span class="d" style="background:#0d6efd"><i class="bi bi-signpost-split"></i></span><div>Trip of 18.4 km<small>Top speed 34 km/h</small></div></li><li><span class="d" style="background:#198754"><i class="bi bi-cash-coin"></i></span><div>Collected GH₵ 95.00<small>Cash from Rider 1</small></div></li><li><span class="d" style="background:#fd7e14"><i class="bi bi-battery-charging"></i></span><div>Battery swapped<small>BAT-KSI-004 fitted</small></div></li><li><span class="d" style="background:#dc3545"><i class="bi bi-exclamation-triangle-fill"></i></span><div>Left Kumasi Central zone<small>Alert resolved</small></div></li></ul></div></div>
+        <div class="bc w6 dark rv"><div class="ic"><i class="bi bi-speedometer2"></i></div><h3>Starts every morning with what is urgent</h3><p>Theft, late deliveries, silent trackers, arrears and expiring papers, ranked for you.</p>
+          <div class="viz"><div class="mini" style="width:100%"><div class="att r" style="color:#7a1c1c"><i class="bi bi-exclamation-octagon-fill"></i><b>2 urgent</b> vehicles locked for non-payment</div><div class="att y" style="color:#6a4a00"><i class="bi bi-exclamation-triangle-fill"></i><b>3 soon</b> insurance expiring in 30 days</div><div class="att b" style="color:#103a66;margin:0"><i class="bi bi-info-circle-fill"></i><b>1</b> tracker silent for 24 hours</div></div></div></div>
+
+        <div class="bc rv"><div class="ic"><i class="bi bi-file-earmark-text"></i></div><h3>Contracts and instalments</h3><p>Outright sale, lease or Work-and-Pay with schedules and arrears.</p></div>
+        <div class="bc rv"><div class="ic"><i class="bi bi-wrench-adjustable"></i></div><h3>Maintenance</h3><p>Plan services, record costs, catch overdue vehicles early.</p></div>
+        <div class="bc rv"><div class="ic"><i class="bi bi-people"></i></div><h3>Roles and hubs</h3><p>Hub managers see their hubs. Finance sees money. Riders see their own day.</p></div>
+        <div class="bc rv"><div class="ic"><i class="bi bi-eye-slash"></i></div><h3>Driver privacy</h3><p>Privately used vehicles can hide their position outside working hours.</p></div>
+        <div class="bc rv"><div class="ic"><i class="bi bi-journal-check"></i></div><h3>Audit trail</h3><p>Every change is recorded and cannot be erased.</p></div>
+        <div class="bc rv"><div class="ic"><i class="bi bi-bullseye"></i></div><h3>Zone checklists</h3><p>A checklist pops up when a vehicle reaches a customer, and the result syncs live.</p></div>
+      </div>
+    </div></section>
+
+    <section class="tour" id="tour"><div class="wrap">
+      <span class="eyebrow">Inside the app</span>
+      <h2 style="margin:.7rem 0 .6rem;max-width:760px">Clear screens your whole team can read</h2>
+      <p class="lead">An illustrated tour. The numbers are examples.</p>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="tourbox" id="tourbox"></div>
+    </div></section>
+
+    <section><div class="wrap">
+      <span class="eyebrow">How it works</span><h2 style="margin:.7rem 0 .6rem;max-width:760px">Live in days, not months</h2>
+      <div class="steps">
+        <div class="st rv"><h3>Fit the trackers</h3><p>We fit a GPS tracker and, for e-bikes, link the battery. Works with common GT06, TK103 and Teltonika devices.</p></div>
+        <div class="st rv"><h3>Set up hubs and riders</h3><p>Add hubs, vehicles, owners and riders, or import them from a spreadsheet.</p></div>
+        <div class="st rv"><h3>Start collecting</h3><p>Riders pay daily. You see payments, shortfalls and settlements as they happen.</p></div>
+        <div class="st rv"><h3>Watch it grow</h3><p>Reports, history and alerts show what to fix and where to add vehicles.</p></div>
+      </div>
+    </div></section>
+
+    <section class="models" id="models"><div class="wrap">
+      <span class="eyebrow">Business models</span><h2 style="margin:.7rem 0 .6rem;max-width:760px">Sell it, lease it or let riders earn it</h2>
+      <p class="lead">Pick the model that fits your market. The platform handles the paperwork and the money trail for each.</p>
+      <div class="mgrid">
+        <div class="mc rv"><h3>Outright purchase</h3><div class="sub">The owner buys the vehicle</div><ul><li>Deposit and instalment schedule</li><li>Ownership and contract record</li><li>Full vehicle history for resale</li></ul><a class="btn-l btn-d" href="#quote">Ask about this</a></div>
+        <div class="mc hot rv"><h3>Work-and-Pay</h3><div class="sub">The rider pays a daily amount and earns ownership</div><ul><li>Daily remittance and shortfall tracking</li><li>Warnings, grace period, safe lock</li><li>Contract closes when it is paid off</li></ul><a class="btn-l btn-g" href="#quote">Ask about this</a></div>
+        <div class="mc rv"><h3>Lease</h3><div class="sub">You keep the vehicle, the rider rents it</div><ul><li>Fixed daily or weekly amount</li><li>Maintenance and battery cost tracking</li><li>Return and re-assign in a click</li></ul><a class="btn-l btn-d" href="#quote">Ask about this</a></div>
+      </div>
+    </div></section>
+
+    <section><div class="wrap"><div class="split">
+      <div>
+        <span class="eyebrow">Trust and control</span><h2 style="margin:.7rem 0 1rem">Your data, your rules</h2>
+        <p class="lead">Each organisation's data stays separate. People only see the hubs and records their role allows.</p>
+        <div class="tgrid">
+          <div class="tg"><i class="bi bi-diagram-3"></i><div><h3>Hub and role access</h3><p>Dispatchers and hub managers see only their vehicles and areas.</p></div></div>
+          <div class="tg"><i class="bi bi-journal-lock"></i><div><h3>Append-only audit log</h3><p>Records of what happened cannot be edited or deleted, even by admins.</p></div></div>
+          <div class="tg"><i class="bi bi-shield-check"></i><div><h3>Safe by design</h3><p>A vehicle is never locked while moving, and every lock needs a reason.</p></div></div>
+        </div>
+      </div>
+      <figure class="ph" data-photo="trust" style="margin:0;aspect-ratio:4/4.3" id="trust-ph"></figure>
+    </div></div></section>
+
+    <section id="hardware" hidden><div class="wrap"><span class="eyebrow">Hardware</span><h2 style="margin:.7rem 0 0">Trackers and hardware</h2><div class="hw" id="hw-grid"></div></div></section>
+    <section id="testimonials" hidden style="background:var(--bg-2)"><div class="wrap"><span class="eyebrow">Customers</span><h2 style="margin:.7rem 0 0">What customers say</h2><div class="quotes" id="quotes"></div></div></section>
+
+    <section id="faq"><div class="wrap" style="max-width:860px">
+      <span class="eyebrow">Questions</span><h2 style="margin:.7rem 0 1.4rem">Frequently asked</h2>
+      <div class="faq" id="faq-list">
+        <details open><summary>Do I need to buy new vehicles?</summary><p>No. You can add vehicles you already own. Fit a tracker, add the vehicle and its rider, and it appears on your dashboard.</p></details>
+        <details><summary>Which trackers work with it?</summary><p>Common GT06, TK103 and Teltonika devices. We can advise on which one suits your vehicles and SIM network.</p></details>
+        <details><summary>Can riders pay by mobile money?</summary><p>Yes. Payments by cash, mobile money and bank are recorded in cedis against the rider and the day, and roll into daily settlements.</p></details>
+        <details><summary>Will it lock a vehicle while someone is riding?</summary><p>No. The system warns first and only locks when the vehicle is stopped. Every lock and unlock is logged with a reason and who approved it.</p></details>
+        <details><summary>Who can see what?</summary><p>Admins see everything. Hub managers and dispatchers see their own hubs. Finance sees money. Investors see returns. Riders see their own day. A vehicle used privately can hide its position outside working hours.</p></details>
+        <details><summary>Can I get my data out?</summary><p>Yes. Lists and reports can be exported, and your history stays available for owners, banks and insurers.</p></details>
+        <details><summary>How much does it cost?</summary><p>It depends on fleet size and hardware. Send a request and we will reply with a clear quote.</p></details>
+      </div>
+    </div></section>
+
+    <section class="contact" id="quote"><div class="wrap"><div class="split" style="align-items:start">
+      <div>
+        <span class="eyebrow" style="color:#7ff0bb">Get started</span>
+        <h2 style="margin:.7rem 0 1rem;color:#fff">Let us show you your own fleet on this screen</h2>
+        <p class="lead">Tell us about your fleet and we will reply with a quote and a short walk-through. No obligation.</p>
+        <div class="cl">
+          <a id="c-wa" href="https://wa.me/233000000000" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i><span>Chat on WhatsApp<small>Fastest way to reach us</small></span></a>
+          <a id="c-mail" href="mailto:hello@vtrack.pro"><i class="bi bi-envelope"></i><span>hello@vtrack.pro<small>We reply within one working day</small></span></a>
+          <a id="c-tel" href="tel:+233000000000"><i class="bi bi-telephone"></i><span>+233 00 000 0000<small>Mon to Sat, 8am to 6pm</small></span></a>
+        </div>
+      </div>
+      <form class="form" id="lead-form" novalidate>
+        <div id="form-body">
+          <div class="g2"><div><label for="f-name">Your name *</label><input id="f-name" autocomplete="name" required></div><div><label for="f-company">Company</label><input id="f-company" autocomplete="organization"></div></div>
+          <div class="g2"><div><label for="f-phone">Phone or WhatsApp *</label><input id="f-phone" type="tel" autocomplete="tel" placeholder="+233 …"></div><div><label for="f-email">Email</label><input id="f-email" type="email" autocomplete="email"></div></div>
+          <div class="g2"><div><label for="f-city">City</label><input id="f-city" placeholder="Accra, Kumasi, Tamale…"></div><div><label for="f-size">Vehicles in your fleet</label><input id="f-size" type="number" min="1" placeholder="e.g. 25"></div></div>
+          <label for="f-msg">What do you want to achieve?</label><textarea id="f-msg" rows="3" placeholder="Track bikes, collect daily payments, manage batteries…"></textarea>
+          <label class="chk"><input type="checkbox" id="f-consent"><span>I agree to be contacted about this request.</span></label>
+          <div class="err" id="f-err" hidden></div>
+          <button class="btn-l btn-g" id="f-send" type="submit" style="width:100%;justify-content:center;margin-top:1.2rem">Send my request</button>
+        </div>
+        <div class="ok" id="f-ok" hidden><i class="bi bi-check-circle-fill"></i><h3 style="margin:.6rem 0 .3rem">Thank you</h3><p style="color:var(--muted);margin:0" id="f-ok-msg">A member of our team will contact you shortly.</p></div>
+      </form>
+    </div></div></section>
+  </main>
+
+  <footer>
+    <div class="flag" style="margin:-56px 0 56px"></div>
+    <div class="wrap">
+      <div class="cols">
+        <div><a class="brand" href="#top" style="color:#fff;padding:0"><span class="mark"><i class="bi bi-signpost-split"></i></span>V-Track Pro</a><p style="margin-top:.8rem;max-width:320px">Fleet and business platform for electric bikes and tricycles. Built in Ghana.</p></div>
+        <div><h4>Product</h4><a href="#features">Features</a><a href="#tour">Inside the app</a><a href="#models">Business models</a></div>
+        <div><h4>Company</h4><a href="#who">Who it is for</a><a href="#faq">FAQ</a><a href="#quote">Contact</a></div>
+        <div><h4>Account</h4><a href="../app/login.html">Sign in</a><a href="quote.html">Request a quote</a></div>
+      </div>
+      <div class="bot"><span>&copy; 2026 V-Track Pro. All rights reserved.</span><span>Made in Ghana</span></div>
+    </div>
+  </footer>
+  <a class="wa" id="wa-float" href="https://wa.me/233000000000" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><i class="bi bi-whatsapp"></i></a>
+
+  <script>
+    // ---- Edit these three lines with your real contact details ----
+    const CONTACT = { whatsapp: '233000000000', email: 'hello@vtrack.pro', phone: '+233 00 000 0000' };
+    document.querySelectorAll('#c-wa,#wa-float').forEach((a) => (a.href = `https://wa.me/${CONTACT.whatsapp}`));
+    document.getElementById('c-mail').href = 'mailto:' + CONTACT.email; document.querySelector('#c-mail span').firstChild.nodeValue = CONTACT.email;
+    document.getElementById('c-tel').href = 'tel:' + CONTACT.phone.replace(/[^+\d]/g, ''); document.querySelector('#c-tel span').firstChild.nodeValue = CONTACT.phone;
+
+    const nav = document.getElementById('nav'), burger = document.getElementById('burger');
+    const onScroll = () => nav.classList.toggle('solid', scrollY > 24 && !nav.classList.contains('open')); onScroll(); addEventListener('scroll', onScroll, { passive: true });
+    burger.addEventListener('click', () => { const o = nav.classList.toggle('open'); burger.setAttribute('aria-expanded', o); nav.classList.remove('solid'); if (!o) onScroll(); });
+    document.getElementById('links').addEventListener('click', (e) => { if (e.target.closest('a')) { nav.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); onScroll(); } });
+
+    // ---- "Who it is for": drawn scenes; a real photo at img/photos/<name>.jpg replaces the drawing ----
+    const SCENES = {
+      owners: { t: 'Fleet owners and investors', h: 'Owners and investors', p: 'See what each vehicle earns, what is owed and where your money is, without chasing anyone for a report.', bg: ['#0f4a3a', '#1f7a5a'], v: 'ebike', extra: '<g fill="#ffd166"><circle cx="318" cy="70" r="20"/><circle cx="352" cy="92" r="14" opacity=".8"/></g><text x="318" y="77" text-anchor="middle" font-size="22" font-weight="800" fill="#6b4a00" font-family="Arial">₵</text>' },
+      operators: { t: 'Rider-hire operators', h: 'Rider-hire operators', p: 'Hand out vehicles, take daily remittance, track who has paid, and lock safely when someone falls behind.', bg: ['#0f3d4a', '#1b6f86'], v: 'trike', extra: '<g><rect x="40" y="36" width="96" height="46" rx="10" fill="#fff" opacity=".95"/><circle cx="62" cy="59" r="9" fill="#0ac072"/><rect x="78" y="50" width="48" height="6" rx="3" fill="#b9c8c2"/><rect x="78" y="62" width="32" height="6" rx="3" fill="#d6e0dc"/></g>' },
+      delivery: { t: 'Delivery and logistics', h: 'Delivery and logistics', p: 'Dispatch the nearest vehicle, share live arrival times with customers and prove every delivery with a checklist.', bg: ['#4a3410', '#a8741c'], v: 'trike', extra: '<g><path d="M310 46l22 -14 22 14v30l-22 14-22-14z" fill="#e8b25a"/><path d="M310 46l22 14 22 -14M332 60v30" stroke="#8a5a14" stroke-width="3" fill="none"/></g>' },
+      hubs: { t: 'Charging and swap hubs', h: 'Hub managers', p: 'Run the hub day: who took which battery, what is charging, what is faulty and what needs service.', bg: ['#1b2a58', '#3550a5'], v: null, extra: '<g><rect x="70" y="70" width="260" height="130" rx="12" fill="#0e1738"/><g fill="#0ac072"><rect x="92" y="92" width="44" height="86" rx="8"/><rect x="150" y="92" width="44" height="86" rx="8"/></g><g fill="#ffd166"><rect x="208" y="92" width="44" height="86" rx="8"/></g><g fill="#5b6aa0"><rect x="266" y="92" width="44" height="86" rx="8"/></g><path d="M114 118l-9 16h9l-4 14 14-19h-9l5-11z" fill="#04251a"/></g>' },
+    };
+    document.getElementById('who-grid').innerHTML = Object.entries(SCENES).map(([k, s]) => `<article class="c rv"><figure class="ph" data-photo="${k}" style="margin:0"><svg class="art" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="w-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.bg[0]}"/><stop offset="1" stop-color="${s.bg[1]}"/></linearGradient></defs><rect width="400" height="300" fill="url(#w-${k})"/><circle cx="90" cy="230" r="150" fill="#fff" opacity=".05"/><circle cx="350" cy="40" r="110" fill="#fff" opacity=".06"/>${s.extra}<rect y="232" width="400" height="68" fill="#000" opacity=".28"/>${s.v ? `<svg x="${s.v === 'trike' ? 72 : 90}" y="${s.v === 'trike' ? 118 : 112}" width="${s.v === 'trike' ? 250 : 210}" viewBox="0 0 ${s.v === 'trike' ? '380 200' : '300 190'}"><use href="#${s.v}"/></svg>` : ''}</svg><figcaption class="cap">${s.t}</figcaption></figure><div class="t"><h3>${s.h}</h3><p>${s.p}</p></div></article>`).join('');
+    document.getElementById('trust-ph').innerHTML = `<svg class="art" viewBox="0 0 400 430" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="w-trust" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d3b33"/><stop offset=".7" stop-color="#1f6b52"/><stop offset="1" stop-color="#e8a23a"/></linearGradient></defs><rect width="400" height="430" fill="url(#w-trust)"/><circle cx="290" cy="250" r="90" fill="url(#gSun)"/><rect y="330" width="400" height="100" fill="#1a2723"/><rect y="336" width="400" height="3" fill="#ffd166" opacity=".5"/><svg x="40" y="190" width="320" viewBox="0 0 300 190"><use href="#ebike"/></svg><g transform="translate(250 60)"><rect width="120" height="58" rx="14" fill="#fff"/><path d="M26 30l9 9 17-20" stroke="#0ac072" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="62" y="20" width="44" height="7" rx="3.5" fill="#b9c8c2"/><rect x="62" y="34" width="30" height="7" rx="3.5" fill="#d6e0dc"/></g></svg><figcaption class="cap">Hub, rider and vehicle: one trail from start to finish</figcaption>`;
+    document.querySelectorAll('.ph[data-photo]').forEach((f) => { const img = new Image(); img.className = 'photo'; img.loading = 'lazy'; img.alt = (f.querySelector('.cap') || {}).textContent || ''; img.onload = () => { f.classList.add('has-photo'); f.prepend(img); }; img.src = `img/photos/${f.dataset.photo}.jpg`; });
+
+    // reveal on scroll (bars animate when their card appears)
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); e.target.querySelectorAll('.bars').forEach((b) => b.classList.add('go')); io.unobserve(e.target); } }), { threshold: .12 }) : null;
+    const observe = () => document.querySelectorAll('.rv:not([data-o])').forEach((el, i) => { el.dataset.o = 1; if (io) { el.style.transitionDelay = (i % 4) * 70 + 'ms'; io.observe(el); } else { el.classList.add('in'); el.querySelectorAll('.bars').forEach((b) => b.classList.add('go')); } });
+    observe();
+
+    // ---- drawn tour ----
+    const bar = (h, lo) => `<i class="${lo ? 'lo' : ''}" style="--h:${h}%"></i>`;
+    const TOUR = [
+      ['bi-speedometer2', 'Dashboard', 'Start the day knowing what matters', 'The first screen lists what needs attention now, with numbers and one click to fix it.', ['Urgent and soon, ranked for you', 'Collections for the last 14 days', 'How many vehicles are earning'],
+        () => `<div class="kpis"><div class="kpi"><small>Vehicles</small><b>48</b></div><div class="kpi"><small>Online now</small><b>44</b></div><div class="kpi"><small>Collected today</small><b>GH₵ 3,420</b></div><div class="kpi"><small>Open alerts</small><b style="color:#d33">7</b></div></div><div class="row2"><div class="box"><h4>Needs attention now</h4><div class="att r"><i class="bi bi-exclamation-octagon-fill"></i><span><b>2 vehicles</b> locked for non-payment</span></div><div class="att y"><i class="bi bi-exclamation-triangle-fill"></i><span><b>3 riders</b> with unpaid shortfall</span></div><div class="att y"><i class="bi bi-battery-half"></i><span><b>2 batteries</b> below 70% health</span></div><div class="att b" style="margin:0"><i class="bi bi-info-circle-fill"></i><span><b>1 tracker</b> silent for 24 hours</span></div></div><div class="box"><h4>Collections, 14 days</h4><div class="bars go" style="height:120px">${[55, 70, 64, 80, 74, 90, 62, 84, 78, 92, 70, 88, 76, 95].map((h, i) => bar(h, i === 6)).join('')}</div></div></div>`],
+      ['bi-clock-history', 'Vehicle history', 'Every vehicle has a story', 'Distance, use, earnings, alerts and repairs on one timeline, with findings written in plain words.', ['Day-by-day charts and route', 'Expiring documents flagged', 'Print for owners, banks and insurers'],
+        () => `<div class="kpis"><div class="kpi"><small>Distance</small><b>412 km</b></div><div class="kpi"><small>Days in use</small><b>24 / 30</b></div><div class="kpi"><small>Collected</small><b>GH₵ 2,280</b></div><div class="kpi"><small>Per km</small><b>GH₵ 5.5</b></div></div><div class="row2"><div class="box"><h4>Activity timeline</h4><ul class="tl"><li><span class="d" style="background:#0d6efd"><i class="bi bi-signpost-split"></i></span><div>Trip of 18.4 km<small>Today, 08:12</small></div></li><li><span class="d" style="background:#198754"><i class="bi bi-cash-coin"></i></span><div>Collected GH₵ 95.00<small>Yesterday, 18:40</small></div></li><li><span class="d" style="background:#6f42c1"><i class="bi bi-wrench-adjustable"></i></span><div>Service done: brakes<small>3 days ago</small></div></li></ul></div><div class="box"><h4>What stands out</h4><div class="att y"><i class="bi bi-exclamation-triangle-fill"></i><span>Insurance runs out in 12 days</span></div><div class="att" style="background:#e7f8ef"><i class="bi bi-check-circle-fill" style="color:#079a5b"></i><span>Distance up 23% on last month</span></div></div></div>`],
+      ['bi-cash-coin', 'Collections', 'Know who has paid, today', 'Daily targets, payments and shortfalls per rider, closed into one settlement.', ['Cash, mobile money and bank', 'Shortfalls carried forward', 'One settlement per day and hub'],
+        () => `<div class="kpis"><div class="kpi"><small>Due today</small><b>GH₵ 3,840</b></div><div class="kpi"><small>Paid</small><b style="color:#079a5b">GH₵ 3,420</b></div><div class="kpi"><small>Rate</small><b>89%</b></div></div><div class="box"><table class="tbl"><tr><th>Rider</th><th>Vehicle</th><th>Paid</th><th></th></tr>${[['Rider 1', 'GR 4471-26', 95, 100], ['Rider 2', 'AS 2210-26', 80, 100], ['Rider 3', 'GR 4472-26', 100, 100], ['Rider 4', 'AS 2211-26', 40, 100]].map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>GH₵ ${r[2]}.00</td><td><div class="prog"><i style="width:${r[2]}%;${r[2] < 60 ? 'background:#e0a000' : ''}"></i></div></td></tr>`).join('')}</table></div>`],
+      ['bi-battery-charging', 'Batteries', 'Every battery accounted for', 'Serial numbers, health, cycles and swaps, so batteries last longer and never go missing.', ['Fit, swap and charge in seconds', 'Faulty and worn batteries flagged', 'Charging fees in the daily settlement'],
+        () => `<div class="kpis"><div class="kpi"><small>Available</small><b>14</b></div><div class="kpi"><small>On vehicles</small><b>31</b></div><div class="kpi"><small>Charging</small><b>6</b></div><div class="kpi"><small>Faulty</small><b style="color:#d33">2</b></div></div><div class="box"><table class="tbl"><tr><th>Serial</th><th>Status</th><th>Health</th><th>Cycles</th></tr>${[['BAT-KSI-001', 'Fitted', 92, 118], ['BAT-KSI-002', 'Fitted', 64, 402], ['BAT-KSI-004', 'Charging', 88, 140], ['BAT-KSI-005', 'Available', 40, 520]].map((r) => `<tr><td>${r[0]}</td><td><span class="badge2">${r[1]}</span></td><td><div class="prog"><i style="width:${r[2]}%;${r[2] < 70 ? 'background:#e0a000' : ''}"></i></div></td><td>${r[3]}</td></tr>`).join('')}</table></div>`],
+    ];
+    const tabs = document.getElementById('tabs'), box = document.getElementById('tourbox');
+    tabs.innerHTML = TOUR.map((t, i) => `<button class="tab" role="tab" aria-selected="${i === 0}" data-i="${i}"><i class="bi ${t[0]}"></i>${t[1]}</button>`).join('');
+    function showTour(i) { const t = TOUR[i]; tabs.querySelectorAll('.tab').forEach((b, j) => b.setAttribute('aria-selected', j === i));
+      box.innerHTML = `<div><h3>${t[2]}</h3><p>${t[3]}</p><ul>${t[4].map((x) => `<li>${x}</li>`).join('')}</ul><a class="btn-l btn-g" href="#quote" style="margin-top:1.4rem">Get a quote</a></div><div class="dev" aria-label="Illustration of the ${t[1]} screen"><div class="top"><i></i><i></i><i></i><span>app.vtrack.pro</span></div><div class="body">${t[5]()}</div></div>`; }
+    tabs.addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTour(+b.dataset.i); }); showTour(0);
+
+    // ---- API: public endpoints live at /public/*; behind a proxy they may also be under /api ----
+    const LOCAL = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+    const BASES = LOCAL ? ['http://localhost:3000'] : [location.origin, location.origin + '/api'];
+    async function pub(path, opts) {
+      let last;
+      for (const b of BASES) { try { const r = await fetch(`${b}/public/${path}`, opts); if (r.status !== 404) return r; last = r; } catch (e) { last = e; } }
+      if (last instanceof Response) return last; throw last || new Error('offline');
+    }
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    (async () => { try { const b = await (await pub('products')).json(); const list = (b.data || []).slice(0, 6); if (!list.length) return;
+      document.getElementById('hw-grid').innerHTML = list.map((p) => `<div class="c"><i class="bi bi-cpu"></i><h3 style="font-size:1.1rem;margin:.5rem 0 .3rem">${esc(p.name)}</h3><p style="color:var(--muted);margin:0 0 .8rem;font-size:.93rem">${esc(p.shortDescription || '')}</p><a href="product.html?slug=${encodeURIComponent(p.slug)}" style="font-weight:700;color:var(--g-dark);text-decoration:none">Learn more →</a></div>`).join('');
+      document.getElementById('hardware').hidden = false; } catch {} })();
+    (async () => { try { const b = await (await pub('testimonials')).json(); const list = (b.data || []).slice(0, 3); if (!list.length) return;
+      document.getElementById('quotes').innerHTML = list.map((t) => `<div class="qc"><div class="stars">${'★'.repeat(Math.min(5, t.rating || 5))}</div><p style="font-style:italic">“${esc(t.quote)}”</p><b>${esc(t.customerName)}</b><div style="color:var(--muted);font-size:.88rem">${esc(t.companyName || '')}</div></div>`).join('');
+      document.getElementById('testimonials').hidden = false; } catch {} })();
+    (async () => { try { const b = await (await pub('faqs')).json(); const list = b.data || []; if (!list.length) return;
+      document.getElementById('faq-list').innerHTML = list.map((f, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(f.question)}</summary><p>${esc(f.answer)}</p></details>`).join(''); } catch {} })();
+
+    // lead form
+    document.getElementById('lead-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = (id) => document.getElementById(id).value.trim(), err = document.getElementById('f-err'); err.hidden = true;
+      const fail = (m) => { err.textContent = m; err.hidden = false; };
+      if (!v('f-name')) return fail('Please tell us your name.');
+      if (!v('f-phone') && !v('f-email')) return fail('Please give a phone number or an email so we can reply.');
+      if (v('f-email') && !/^\S+@\S+\.\S+$/.test(v('f-email'))) return fail('That email does not look right.');
+      if (!document.getElementById('f-consent').checked) return fail('Please tick the box so we may contact you.');
+      const btn = document.getElementById('f-send'); btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        const r = await pub('quotes/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+          contactName: v('f-name'), companyName: v('f-company') || undefined, phone: v('f-phone') || undefined, email: v('f-email') || undefined, whatsappNumber: v('f-phone') || undefined,
+          city: v('f-city') || undefined, country: 'GH', fleetSize: v('f-size') ? Number(v('f-size')) : undefined, message: v('f-msg') || undefined, consentToContact: true }) });
+        if (r.status === 429) throw new Error('Too many requests. Please wait a minute and try again.');
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok || (body.data && body.data.received === false)) throw new Error((body.data && body.data.reason) || body.detail || 'Something went wrong. Please try again or message us on WhatsApp.');
+        document.getElementById('form-body').hidden = true; document.getElementById('f-ok').hidden = false;
+        if (body.data && body.data.message) document.getElementById('f-ok-msg').textContent = body.data.message;
+      } catch (x) { fail(x.message === 'Failed to fetch' ? 'We could not reach the server. Please message us on WhatsApp instead.' : x.message); btn.disabled = false; btn.textContent = 'Send my request'; }
+    });
+
+  </script>
+</body>
+</html>

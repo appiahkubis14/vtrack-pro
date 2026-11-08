@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vtrack-app
+  namespace: vtrack
+  labels:
+    app: vtrack-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vtrack-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: vtrack-app
+    spec:
+      containers:
+        - name: vtrack-app
+          image: registry.example.com/vtrack-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 5023
+              name: gt06
+            - containerPort: 5040
+              name: tk103
+            - containerPort: 5050
+              name: teltonika
+          envFrom:
+            - configMapRef:
+                name: vtrack-config
+            - secretRef:
+                name: vtrack-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"

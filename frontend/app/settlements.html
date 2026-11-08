@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Settlements | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div><h4 class="fw-bold mb-1">Daily Settlements</h4><p class="text-muted mb-0">Record the day's takings, divide them, and close the day.</p></div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="d-flex gap-2 mb-3 align-items-center flex-wrap"><select class="form-select form-select-sm w-auto" id="hub-select"></select><input type="date" class="form-control form-control-sm w-auto" id="day"><button class="btn btn-sm btn-outline-secondary" id="reload">Refresh</button></div>
+    <div class="row g-3 mb-4" id="totals"></div>    <div class="card mb-4"><div class="card-header fw-semibold">Settlements</div><div class="card-body p-0" id="settle-list"></div></div>    <div class="card mb-4"><div class="card-header fw-semibold">Takings recorded</div><div class="card-body p-0" id="coll-list"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const canEdit = Biz.can(...Biz.ADMIN, 'fleet_manager', 'hub_manager');
+      const canCalc = canEdit || Biz.can('finance');
+      let hubs = [], riders = [], settlements = [], collections = [];
+      const hubId = () => document.getElementById('hub-select').value;
+      const day = () => document.getElementById('day').value || Biz.today();
+      const rider = (id) => (riders.find((r) => r.id === id) || {}).fullName || '—';
+
+      async function load() {
+        if (!hubId()) { document.getElementById('settle-list').innerHTML = '<div class="text-center text-muted py-5">Choose a hub to work on its day.</div>'; document.getElementById('coll-list').innerHTML = ''; document.getElementById('totals').innerHTML = ''; return; }
+        const q = `hubId=${hubId()}&date=${day()}`;
+        const [r, s, c] = await Promise.all([VTrackAPI.get(`/riders?hubId=${hubId()}`), VTrackAPI.get('/settlements?' + q), VTrackAPI.get('/collections?' + q)]);
+        riders = r.data; settlements = s.data; collections = c.data;
+        const sum = (k) => settlements.reduce((a, x) => a + x[k], 0);
+        document.getElementById('totals').innerHTML = Biz.stat('Collected', Biz.ghs(sum('grossCollectedPesewas'))) + Biz.stat('To owners', Biz.ghs(sum('remittancePaidPesewas'))) + Biz.stat('Riders\' chop', Biz.ghs(sum('chopPesewas'))) + Biz.stat('Shortfall', Biz.ghs(sum('shortfallPesewas')), `${settlements.filter((x) => x.status === 'shortfall').length} rider(s)`);
+        document.getElementById('settle-list').innerHTML = Biz.table([
+          { label: 'Rider', render: (x) => `<span class="fw-medium">${Biz.esc(rider(x.riderId))}</span>` }, { label: 'Collected', cls: 'text-end', render: (x) => Biz.ghs(x.grossCollectedPesewas) },
+          { label: 'Charging', cls: 'text-end', render: (x) => Biz.ghs(x.chargeFeePesewas) }, { label: 'Remittance', cls: 'text-end', render: (x) => `${Biz.ghs(x.remittancePaidPesewas)}<div class="text-muted fs-13">of ${Biz.ghs(x.remittanceDuePesewas)}</div>` },
+          { label: 'Service fee', cls: 'text-end', render: (x) => Biz.ghs(x.serviceFeePesewas) }, { label: 'Chop', cls: 'text-end', render: (x) => Biz.ghs(x.chopPesewas) },
+          { label: 'Status', render: (x) => Biz.badge(x.status) + (x.version > 1 ? ` <span class="text-muted fs-13">v${x.version}</span>` : '') },
+          { label: '', cls: 'text-end', render: (x) => (canCalc && x.status !== 'closed' ? `<button class="btn btn-sm btn-outline-success" data-close="${x.id}">Close day</button>` : '') },
+        ], settlements, 'Nothing has been calculated for this day yet.');
+        document.getElementById('coll-list').innerHTML = Biz.table([
+          { label: 'Rider', render: (x) => Biz.esc(rider(x.riderId)) }, { label: 'Amount', cls: 'text-end', render: (x) => Biz.ghs(x.amountPesewas) },
+          { label: 'Source', render: (x) => Biz.label(x.source) }, { label: 'Reference', render: (x) => Biz.esc(x.reference || '—') },
+          { label: 'Recorded', render: (x) => new Date(x.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+        ], collections, 'No takings recorded for this day.');
+      }
+
+      if (canEdit) {
+        const rec = document.createElement('button'); rec.className = 'btn btn-outline-primary btn-sm'; rec.textContent = 'Record takings';
+        rec.onclick = () => {
+          if (!hubId()) return Biz.toast('Choose a hub first', 'warning');
+          Biz.form({ title: `Record takings for ${day()}`, fields: [
+            { name: 'riderId', label: 'Rider', type: 'select', required: true, options: Biz.opts(riders.filter((r) => r.assignedVehicleId), (r) => r.id, (r) => r.fullName), hint: 'Only riders with a vehicle are listed.' },
+            { name: 'amountPesewas', label: 'Amount handed over', type: 'money', required: true, col: 6 },
+            { name: 'source', label: 'How', type: 'select', required: true, value: 'cash', col: 6, options: ['cash','momo','other'].map((x) => ({ value: x, label: x })) },
+            { name: 'reference', label: 'Receipt or MoMo reference', hint: 'Recommended. Sending the same reference twice is ignored, so a double tap cannot double-count.' },
+          ], onSubmit: async (v) => { await VTrackAPI.post('/collections', { ...v, date: day() }); Biz.toast('Takings recorded'); load(); } });
+        };
+        document.getElementById('page-actions').appendChild(rec);
+      }
+      if (canCalc) {
+        const calc = document.createElement('button'); calc.className = 'btn btn-primary btn-sm'; calc.innerHTML = '<i class="bi bi-calculator me-1"></i>Calculate day';
+        calc.onclick = async () => {
+          if (!hubId()) return Biz.toast('Choose a hub first', 'warning');
+          const r = await Biz.run(() => VTrackAPI.post('/settlements/calculate', { hubId: hubId(), date: day() })); if (!r) return;
+          const done = r.data.filter((x) => !x.skipped).length, closed = r.data.filter((x) => x.skipped).length, short = r.data.filter((x) => x.status === 'shortfall').length;
+          Biz.toast(`${done} calculated${closed ? `, ${closed} already closed` : ''}${short ? `, ${short} with a shortfall` : ''}`, short ? 'warning' : 'success'); load();
+        };
+        document.getElementById('page-actions').appendChild(calc);
+      }
+      document.getElementById('settle-list').addEventListener('click', async (e) => {
+        const id = e.target.closest('[data-close]')?.dataset.close; if (!id) return;
+        if (!(await Biz.confirmAction('Close this settlement? A closed day is final and cannot be recalculated.'))) return;
+        await Biz.run(() => VTrackAPI.post(`/settlements/${id}/close`, {}), 'Day closed'); load();
+      });
+
+      document.getElementById('day').value = Biz.today();
+      document.getElementById('day').addEventListener('change', () => Biz.run(load));
+      document.getElementById('reload').addEventListener('click', () => Biz.run(load));
+      Biz.run(async () => {
+        hubs = (await VTrackAPI.get('/hubs')).data;
+        const sel = document.getElementById('hub-select');
+        sel.innerHTML = '<option value="">Choose hub...</option>' + hubs.map((h) => `<option value="${h.id}">${Biz.esc(h.name)}</option>`).join('');
+        if (hubs.length === 1) sel.value = hubs[0].id;
+        sel.addEventListener('change', () => Biz.run(load));
+        await load();
+      });
+    });
+
+  </script>
+</body>
+</html>

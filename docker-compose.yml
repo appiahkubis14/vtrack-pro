@@ -1,0 +1,144 @@
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile
+      target: development
+    container_name: vtrack-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"   # REST API + WebSocket
+      - "5023:5023"   # GT06
+      - "5040:5040"   # TK103
+      - "5050:5050"   # Teltonika
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      timescale:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/logs:/app/logs
+      - ./backend/uploads:/app/uploads
+    networks:
+      - vtrack-network
+
+  postgres:
+    image: postgis/postgis:15-3.4-alpine
+    container_name: vtrack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vtrack
+      POSTGRES_USER: vtrack
+      POSTGRES_PASSWORD: sak@2001server
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vtrack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vtrack-network
+
+  timescale:
+    image: timescale/timescaledb:latest-pg15
+    container_name: vtrack-timescale
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vtrack_ts
+      POSTGRES_USER: vtrack
+      POSTGRES_PASSWORD: sak@2001server
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vtrack -d vtrack_ts"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vtrack-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: vtrack-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vtrack-network
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: vtrack-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "19001:9001"
+    volumes:
+      - ./backend/docker/mosquitto/config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t healthcheck -m ping -q 0 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vtrack-network
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: vtrack-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - vtrack-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vtrack-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vtrack.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5051:80"
+    depends_on:
+      - postgres
+    networks:
+      - vtrack-network
+
+networks:
+  vtrack-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  timescale_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:

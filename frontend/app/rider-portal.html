@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Account | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">My Account</h4>
+        <p class="text-muted mb-0">Your vehicle, your daily amounts and your recent days.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div id="lock"></div>
+    <div class="row g-3 mb-4" id="stats"></div>
+    <div class="card mb-4 d-none" id="tasks-card"><div class="card-header fw-semibold"><i class="bi bi-ui-checks"></i> My tasks <span class="badge bg-warning text-dark ms-1" id="tasks-n"></span></div><div class="card-body" id="tasks"></div></div>
+    <div class="card mb-4"><div class="card-header fw-semibold">My vehicle and daily amounts</div><div class="card-body" id="assignment"></div></div>
+    <div class="card"><div class="card-header fw-semibold">My last 14 days</div><div class="card-body p-0" id="days"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    // Checklists that appear when the rider's vehicle enters or leaves a marked place
+    async function loadTasks() {
+      const r = await VTrackAPI.get('/map/my-tasks').catch(() => null); if (!r) return;
+      const list = r.data || [], card = document.getElementById('tasks-card');
+      card.classList.toggle('d-none', !list.length); document.getElementById('tasks-n').textContent = list.length;
+      document.getElementById('tasks').innerHTML = list.map((t) => `<div class="border rounded p-3 mb-3" data-run="${t.id}">
+        <div class="fw-semibold">${Biz.esc(t.title)}</div><div class="text-muted fs-13 mb-2">${Biz.esc(t.geofenceName)} &middot; ${Biz.esc(t.plate)} &middot; please finish by ${new Date(t.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        ${t.items.map((i) => `<label class="d-flex align-items-start gap-2 mb-2"><input type="checkbox" data-item="${Biz.esc(i.id)}" style="width:22px;height:22px;flex:0 0 22px"> <span>${Biz.esc(i.text)}${i.requirePhoto ? ' <span class="badge bg-info text-dark">photo needed</span>' : ''}</span></label>`).join('')}
+        <div class="mb-2"><input type="file" accept="image/*" capture="environment" class="form-control form-control-sm" data-photo></div>
+        <textarea class="form-control form-control-sm mb-2" rows="2" maxlength="1000" placeholder="Note (optional)" data-note></textarea>
+        <button class="btn btn-primary btn-sm" data-done>Done</button> <span class="text-danger fs-13 ms-2" data-err></span></div>`).join('');
+    }
+    // shrink a photo so it uploads quickly on mobile data
+    const shrink = (file) => new Promise((res, rej) => { const img = new Image(); img.onload = () => { const k = Math.min(1, 1100 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.72)); }; img.onerror = () => rej(new Error('That file is not a picture')); img.src = URL.createObjectURL(file); });
+    document.getElementById('tasks').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-done]'); if (!b) return; const box = b.closest('[data-run]'), err = box.querySelector('[data-err]'); err.textContent = ''; b.disabled = true;
+      try {
+        const answers = {}; box.querySelectorAll('[data-item]').forEach((i) => { answers[i.dataset.item] = i.checked; });
+        const f = box.querySelector('[data-photo]').files[0]; const body = { answers, note: box.querySelector('[data-note]').value.trim() || undefined }; if (f) body.photo = await shrink(f);
+        await VTrackAPI.post(`/map/task-runs/${box.dataset.run}/complete`, body); Biz.toast('Thank you, the task is done'); await loadTasks();
+      } catch (x) { err.textContent = x.message || 'Could not save'; b.disabled = false; }
+    });
+    setInterval(loadTasks, 30000);
+
+    Biz.start(async () => {
+      loadTasks();
+      const r = await Biz.run(() => VTrackAPI.get('/portal/rider')); if (!r) return;
+      const d = r.data;
+      const s = d.vehicleState || { state: 'none' };
+      const hrs = (st) => st.graceStartedAt ? Math.max(0, Math.ceil((new Date(st.graceStartedAt).getTime() + st.graceHours * 3600000 - Date.now()) / 3600000)) : st.graceHours;
+      document.getElementById('lock').innerHTML =
+        s.state === 'immobilized' ? '<div class="alert alert-danger"><b>Your vehicle is locked.</b> Please pay what you owe at your hub or contact the hub manager.</div>' :
+        (s.state === 'warning_sent' || s.state === 'payment_failed') ? `<div class="alert alert-warning"><b>Payment reminder.</b> You have an unpaid amount. About ${hrs(s)} hour(s) are left before your vehicle may be locked.</div>` : '';
+      document.getElementById('stats').innerHTML = Biz.stat('Vehicle', Biz.esc(d.rider.plateNumber || 'None'), Biz.esc(d.rider.hubName || '')) + Biz.stat('Daily remittance', Biz.ghs((d.assignment || {}).dailyRemittancePesewas)) +
+        Biz.stat('Unpaid shortfall', Biz.ghs(d.shortfallOwedPesewas)) + Biz.stat('My chop money held', Biz.ghs(d.chopBalancePesewas));
+      document.getElementById('assignment').innerHTML = d.assignment ? `<div class="row g-3"><div class="col-md-3"><div class="text-muted fs-13">Since</div>${Biz.esc(d.assignment.startDate)}</div><div class="col-md-3"><div class="text-muted fs-13">Daily target</div>${Biz.ghs(d.assignment.dailyTargetPesewas)}</div><div class="col-md-3"><div class="text-muted fs-13">Daily remittance</div>${Biz.ghs(d.assignment.dailyRemittancePesewas)}</div><div class="col-md-3"><div class="text-muted fs-13">Service fee</div>${Biz.ghs(d.assignment.serviceFeePesewas)}</div></div>` : '<span class="text-muted">You have no vehicle assigned right now.</span>';
+      document.getElementById('days').innerHTML = Biz.table([
+        { label: 'Date', render: (x) => Biz.esc(String(x.date).slice(0, 10)) }, { label: 'Collected', cls: 'text-end', render: (x) => Biz.ghs(x.grossCollectedPesewas) },
+        { label: 'Charging', cls: 'text-end', render: (x) => Biz.ghs(x.chargeFeePesewas) }, { label: 'Remittance paid', cls: 'text-end', render: (x) => Biz.ghs(x.remittancePaidPesewas) },
+        { label: 'Service fee', cls: 'text-end', render: (x) => Biz.ghs(x.serviceFeePesewas) }, { label: 'I keep', cls: 'text-end', render: (x) => Biz.ghs(x.chopPesewas) },
+        { label: 'Short by', cls: 'text-end', render: (x) => x.shortfallPesewas > 0 ? `<span class="text-danger">${Biz.ghs(x.shortfallPesewas)}</span>` : '—' }, { label: 'Status', render: (x) => Biz.badge(x.status) },
+      ], d.settlements, 'No settled days yet.');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Theft Recovery | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Theft Recovery</h4>
+        <p class="text-muted mb-0" id="cases-subtitle">Loading...</p>
+      </div>
+      <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#newCaseModal"><i class="bi bi-exclamation-triangle me-1"></i>Report Theft</button>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Vehicle</th>
+                <th>Status</th>
+                <th>Last Known Location</th>
+                <th>High-Freq Mode</th>
+                <th>Reported</th>
+                <th class="pe-4 text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="cases-table-body">
+              <tr><td colspan="6" class="text-center text-muted py-5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- New Case Modal -->
+  <div class="modal fade" id="newCaseModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="case-form">
+          <div class="modal-header"><h5 class="modal-title">Report Suspected Theft</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div id="case-error" class="alert alert-danger d-none"></div>
+            <label class="form-label">Vehicle</label>
+            <select class="form-select" id="case-vehicle" required></select>
+            <p class="text-muted fs-13 mt-2 mb-0">This will capture the vehicle's last known live position automatically.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger" id="case-submit">Open Case</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Case Detail Modal -->
+  <div class="modal fade" id="caseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="caseModalTitle">Theft Case</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="case-detail-body"></div>
+          <hr>
+          <h6 class="fw-semibold">Immobilization Safety Log</h6>
+          <div id="case-actions-log" class="fs-13"></div>
+        </div>
+        <div class="modal-footer flex-wrap gap-2 justify-content-start" id="case-modal-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-tables.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    const statusColor = {
+      suspected: 'warning', active: 'danger', tracking: 'danger', immobilized: 'dark',
+      recovered: 'success', false_alarm: 'secondary', closed: 'secondary',
+    };
+
+    let allCases = [];
+    let caseModal;
+
+    async function loadVehiclesIntoSelect() {
+      const res = await window.VTrackAPI.get('/vehicles?limit=100');
+      const select = document.getElementById('case-vehicle');
+      select.innerHTML = res.data.map((v) => `<option value="${v.id}">${v.plateNumber}</option>`).join('');
+    }
+
+    async function loadCases() {
+      const res = await window.VTrackAPI.get('/theft-cases');
+      allCases = res.data;
+      document.getElementById('cases-subtitle').textContent = `${allCases.length} case${allCases.length === 1 ? '' : 's'} on record`;
+
+      const tbody = document.getElementById('cases-table-body');
+      if (!allCases.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-5">No theft cases - hopefully it stays that way.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = allCases
+        .map((c) => {
+          const color = statusColor[c.status] || 'secondary';
+          return `
+        <tr style="cursor:pointer" class="case-row" data-id="${c.id}">
+          <td class="ps-4 font-monospace fs-13">${c.vehicleId.slice(0, 8)}</td>
+          <td><span class="badge bg-${color}-subtle text-${color} text-capitalize">${c.status.replace(/_/g, ' ')}</span></td>
+          <td class="fs-13">${c.lastKnownLatitude ? `${Number(c.lastKnownLatitude).toFixed(4)}, ${Number(c.lastKnownLongitude).toFixed(4)}` : '—'}</td>
+          <td>${c.highFrequencyModeEnabled ? '<span class="badge bg-info-subtle text-info">Active</span>' : '—'}</td>
+          <td class="fs-13 text-muted">${new Date(c.reportedAt).toLocaleString()}</td>
+          <td class="pe-4 text-end"><i class="bi bi-chevron-right text-muted"></i></td>
+        </tr>`;
+        })
+        .join('');
+
+      tbody.querySelectorAll('.case-row').forEach((row) => row.addEventListener('click', () => openCase(row.dataset.id)));
+    }
+
+    async function openCase(id) {
+      const theftCase = allCases.find((c) => c.id === id);
+      if (!theftCase) return;
+
+      document.getElementById('caseModalTitle').textContent = `Case — Vehicle ${theftCase.vehicleId.slice(0, 8)}`;
+      document.getElementById('case-detail-body').innerHTML = `
+        <div class="row g-3">
+          <div class="col-6"><div class="text-muted fs-13">Status</div><div class="text-capitalize">${theftCase.status.replace(/_/g, ' ')}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">High-Frequency Mode</div><div>${theftCase.highFrequencyModeEnabled ? 'Enabled' : 'Disabled'}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">Last Known Position</div><div>${theftCase.lastKnownLatitude ? `${Number(theftCase.lastKnownLatitude).toFixed(5)}, ${Number(theftCase.lastKnownLongitude).toFixed(5)}` : '—'}</div></div>
+          <div class="col-6"><div class="text-muted fs-13">Reported</div><div>${new Date(theftCase.reportedAt).toLocaleString()}</div></div>
+        </div>`;
+
+      const actionsRes = await window.VTrackAPI.get(`/theft-cases/${id}/actions`);
+      const logEl = document.getElementById('case-actions-log');
+      logEl.innerHTML = actionsRes.data.length
+        ? actionsRes.data
+            .map((a) => {
+              const sc = a.safetyCheckResult;
+              const safe = sc?.safeToImmobilize;
+              return `<div class="mb-2 p-2 rounded ${safe ? 'bg-success-subtle' : 'bg-warning-subtle'}">
+                <strong>${a.actionType.replace(/_/g, ' ')}</strong> — status: ${a.status}<br>
+                ${sc ? `Speed at request: ${sc.speedKmh}km/h — ${sc.reason}` : ''}
+              </div>`;
+            })
+            .join('')
+        : '<div class="text-muted">No recovery actions taken yet.</div>';
+
+      const actionsEl = document.getElementById('case-modal-actions');
+      const buttons = [];
+      if (theftCase.status === 'suspected') {
+        buttons.push(`<button class="btn btn-sm btn-warning activate-btn" data-id="${id}">Activate Case</button>`);
+      }
+      if (['active', 'tracking'].includes(theftCase.status)) {
+        buttons.push(`<button class="btn btn-sm btn-info highfreq-btn" data-id="${id}" ${theftCase.highFrequencyModeEnabled ? 'disabled' : ''}>Enable High-Frequency Tracking</button>`);
+        buttons.push(`<button class="btn btn-sm btn-dark immobilize-btn" data-id="${id}">Request Immobilization</button>`);
+      }
+      if (!['recovered', 'closed', 'false_alarm'].includes(theftCase.status)) {
+        buttons.push(`<button class="btn btn-sm btn-outline-success resolve-btn" data-id="${id}" data-status="recovered">Mark Recovered</button>`);
+      }
+      actionsEl.innerHTML = buttons.join(' ') || '<span class="text-muted fs-13">Case closed.</span>';
+
+      actionsEl.querySelector('.activate-btn')?.addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        await window.VTrackAPI.post(`/theft-cases/${id}/activate`, { enableHighFrequency: true });
+        caseModal.hide();
+        loadCases();
+      });
+      actionsEl.querySelector('.highfreq-btn')?.addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        await window.VTrackAPI.post(`/theft-cases/${id}/activate`, { enableHighFrequency: true });
+        caseModal.hide();
+        loadCases();
+      });
+      actionsEl.querySelector('.immobilize-btn')?.addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        try {
+          const result = await window.VTrackAPI.post(`/theft-cases/${id}/immobilize`, {});
+          if (result.data.executed === false) {
+            const override = confirm(`${result.data.message}\n\nForce emergency override anyway? This will be logged with your user ID.`);
+            if (override) {
+              const reason = prompt('Reason for emergency override (required for the audit log):');
+              if (reason) {
+                await window.VTrackAPI.post(`/theft-cases/${id}/immobilize`, { emergencyOverride: true, overrideReason: reason });
+              }
+            }
+          }
+        } catch (err) {
+          alert(err.message);
+        }
+        caseModal.hide();
+        loadCases();
+      });
+      actionsEl.querySelector('.resolve-btn')?.addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        await window.VTrackAPI.post(`/theft-cases/${id}/resolve`, { status: e.target.dataset.status });
+        caseModal.hide();
+        loadCases();
+      });
+
+      caseModal = caseModal || new bootstrap.Modal(document.getElementById('caseModal'));
+      caseModal.show();
+    }
+
+    document.getElementById('case-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('case-error');
+      errorBox.classList.add('d-none');
+      const submitBtn = document.getElementById('case-submit');
+      submitBtn.disabled = true;
+      try {
+        await window.VTrackAPI.post('/theft-cases', { vehicleId: document.getElementById('case-vehicle').value });
+        bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide();
+        loadCases();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    loadVehiclesIntoSelect();
+    loadCases();
+    setInterval(loadCases, 15000);
+  </script>
+</body>
+</html>

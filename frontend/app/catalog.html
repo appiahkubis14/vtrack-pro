@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product Catalog | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Product Catalog</h4>
+        <p class="text-muted mb-0" id="catalog-subtitle">Loading...</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#categoryModal"><i class="bi bi-tags me-1"></i>New Category</button>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#productModal"><i class="bi bi-plus-lg me-1"></i>New Product</button>
+      </div>
+    </div>
+
+    <div class="mb-3"><input type="search" id="product-search" class="form-control form-control-sm" style="max-width:300px" placeholder="Search products" aria-label="Search products"></div>
+    <div class="row g-3" id="products-grid">
+      <div class="col-12 text-center text-muted py-5">Loading...</div>
+    </div>
+  </main>
+
+  <!-- New Category Modal -->
+  <div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="category-form">
+          <div class="modal-header"><h5 class="modal-title">New Category</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-control mb-2" id="cat-name" required>
+            <label class="form-label">Slug</label>
+            <input type="text" class="form-control" id="cat-slug" required placeholder="fuel-management">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Product Modal -->
+  <div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="product-form">
+          <div class="modal-header"><h5 class="modal-title">New Product</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div id="product-error" class="alert alert-danger d-none"></div>
+            <div class="row g-3">
+              <div class="col-8"><label class="form-label">Name</label><input type="text" class="form-control" id="p-name" required></div>
+              <div class="col-4"><label class="form-label">Category</label><select class="form-select" id="p-category"></select></div>
+              <div class="col-12"><label class="form-label">Slug</label><input type="text" class="form-control" id="p-slug" required placeholder="fuel-monitoring-tracker"></div>
+              <div class="col-12"><label class="form-label">Short Description</label><input type="text" class="form-control" id="p-short-desc"></div>
+              <div class="col-6">
+                <label class="form-label">Hardware Type</label>
+                <select class="form-select" id="p-hardware-type">
+                  <option value="gt06">Standard GPS (GT06)</option>
+                  <option value="portable">Portable/Magnetic</option>
+                  <option value="roaming_sim">Roaming SIM</option>
+                  <option value="audio_capable">Audio-capable</option>
+                  <option value="ev_capable">EV-capable</option>
+                  <option value="bundle">Bundle</option>
+                </select>
+              </div>
+              <div class="col-6"><label class="form-label">Base Currency</label><select class="form-select" id="p-currency"><option>GHS</option><option>USD</option><option>NGN</option></select></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="product-submit">Create Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Modal -->
+  <div class="modal fade" id="pricingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="pricingModalTitle">Pricing</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div id="existing-pricing" class="mb-3"></div>
+          <hr>
+          <h6 class="fw-semibold">Add Pricing Rule (public default)</h6>
+          <form id="pricing-form">
+            <div class="row g-2">
+              <div class="col-4"><label class="form-label fs-13">Currency</label><select class="form-select form-select-sm" id="pr-currency"><option>GHS</option><option>USD</option><option>NGN</option></select></div>
+              <div class="col-4"><label class="form-label fs-13">Hardware Price</label><input type="number" step="0.01" class="form-control form-control-sm" id="pr-hardware" value="0"></div>
+              <div class="col-4"><label class="form-label fs-13">Installation Fee</label><input type="number" step="0.01" class="form-control form-control-sm" id="pr-install" value="0"></div>
+              <div class="col-4"><label class="form-label fs-13">Monthly Subscription</label><input type="number" step="0.01" class="form-control form-control-sm" id="pr-monthly" value="0"></div>
+              <div class="col-4"><label class="form-label fs-13">Annual Subscription</label><input type="number" step="0.01" class="form-control form-control-sm" id="pr-annual" value="0"></div>
+              <div class="col-4"><label class="form-label fs-13">SIM/Data Fee</label><input type="number" step="0.01" class="form-control form-control-sm" id="pr-sim" value="0"></div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary mt-3">Save Pricing Rule</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    let categories = [];
+    let currentPricingProductId = null;
+
+    async function loadCategories() {
+      const res = await window.VTrackAPI.get('/products/categories');
+      categories = res.data;
+      const select = document.getElementById('p-category');
+      select.innerHTML = categories.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    let allProducts = [], q = '';
+    document.getElementById('product-search').addEventListener('input', (e) => { q = e.target.value; drawProducts(); });
+    const canEditCat = Biz.can(...Biz.ADMIN);
+    async function loadProducts() {
+      const res = await window.VTrackAPI.get('/products');
+      allProducts = res.data; drawProducts();
+    }
+    function drawProducts() {
+      const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+      const products = allProducts.filter((p) => words.every((w) => [p.name, p.slug, p.shortDescription, p.hardwareType, p.isActive ? 'active' : 'inactive'].join(' ').toLowerCase().includes(w)));
+      if (!products.length && allProducts.length) { document.getElementById('products-grid').innerHTML = '<div class="col-12 text-center text-muted py-5">No matching products</div>'; return; }
+      document.getElementById('catalog-subtitle').textContent = `${products.length} product${products.length === 1 ? '' : 's'} in catalog`;
+
+      const grid = document.getElementById('products-grid');
+      if (!products.length) {
+        grid.innerHTML = '<div class="col-12 text-center text-muted py-5">No products yet - create one to get started.</div>';
+        return;
+      }
+
+      grid.innerHTML = products
+        .map(
+          (p) => `
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="fw-semibold mb-0">${p.name}</h6>
+                <span class="badge ${p.isActive ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}">${p.isActive ? 'Active' : 'Inactive'}</span>
+              </div>
+              <p class="text-muted fs-13">${p.shortDescription ?? 'No description yet'}</p>
+              <div class="fs-13 text-muted mb-3"><i class="bi bi-cpu me-1"></i>${(p.hardwareType ?? '—').replace(/_/g, ' ')}</div>
+              <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-primary flex-fill pricing-btn" data-id="${p.id}" data-name="${Biz.esc(p.name)}"><i class="bi bi-currency-exchange me-1"></i>Manage Pricing</button>${canEditCat ? `<button class="btn btn-sm btn-outline-secondary" data-pedit="${p.id}">Edit</button>` : ''}</div>
+            </div>
+          </div>
+        </div>`,
+        )
+        .join('');
+
+      grid.querySelectorAll('[data-pedit]').forEach((b) => b.addEventListener('click', () => {
+        const p = allProducts.find((x) => x.id === b.dataset.pedit);
+        Biz.form({ title: `Edit ${p.name}`, clearable: true, fields: [
+          { name: 'name', label: 'Name', required: true, value: p.name }, { name: 'slug', label: 'Slug', required: true, col: 6, value: p.slug },
+          { name: 'hardwareType', label: 'Hardware type', type: 'select', col: 6, value: p.hardwareType || '', options: [['gt06','Standard GPS (GT06)'],['portable','Portable/Magnetic'],['roaming_sim','Roaming SIM'],['audio_capable','Audio-capable'],['ev_capable','EV-capable'],['bundle','Bundle']].map(([value,label])=>({value,label})) },
+          { name: 'shortDescription', label: 'Short description', value: p.shortDescription || '' },
+          { name: 'longDescription', label: 'Long description', type: 'textarea', value: p.longDescription || '' },
+          { name: 'isActive', label: 'Active (visible and quotable)', type: 'checkbox', value: !!p.isActive },
+          { name: 'isFeatured', label: 'Featured', type: 'checkbox', value: !!p.isFeatured },
+        ], onSubmit: async (v) => { await VTrackAPI.put(`/products/${p.id}`, v); Biz.toast('Product saved'); loadProducts(); } });
+      }));
+      grid.querySelectorAll('.pricing-btn').forEach((btn) => {
+        btn.addEventListener('click', () => openPricing(btn.dataset.id, btn.dataset.name));
+      });
+    }
+
+    async function openPricing(productId, name) {
+      currentPricingProductId = productId;
+      document.getElementById('pricingModalTitle').textContent = `Pricing — ${name}`;
+
+      const res = await window.VTrackAPI.get(`/products/${productId}/pricing`);
+      const existing = document.getElementById('existing-pricing');
+      existing.innerHTML = res.data.length
+        ? `<table class="table table-sm"><thead><tr><th>Currency</th><th>Hardware</th><th>Install</th><th>Monthly</th><th>Annual</th></tr></thead><tbody>${res.data
+            .map((r) => `<tr><td>${r.currency}</td><td>${r.hardwarePrice}</td><td>${r.installationFee}</td><td>${r.monthlySubscriptionPrice}</td><td>${r.annualSubscriptionPrice}</td></tr>`)
+            .join('')}</tbody></table>`
+        : '<p class="text-muted fs-13">No pricing set yet - this product cannot be quoted until you add a rule below.</p>';
+
+      new bootstrap.Modal(document.getElementById('pricingModal')).show();
+    }
+
+    document.getElementById('category-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await window.VTrackAPI.post('/products/categories', {
+        name: document.getElementById('cat-name').value,
+        slug: document.getElementById('cat-slug').value,
+      });
+      bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+      document.getElementById('category-form').reset();
+      loadCategories();
+    });
+
+    document.getElementById('product-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('product-error');
+      errorBox.classList.add('d-none');
+      const submitBtn = document.getElementById('product-submit');
+      submitBtn.disabled = true;
+      try {
+        await window.VTrackAPI.post('/products', {
+          name: document.getElementById('p-name').value,
+          slug: document.getElementById('p-slug').value,
+          categoryId: document.getElementById('p-category').value || undefined,
+          shortDescription: document.getElementById('p-short-desc').value || undefined,
+          hardwareType: document.getElementById('p-hardware-type').value,
+          baseCurrency: document.getElementById('p-currency').value,
+        });
+        bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+        document.getElementById('product-form').reset();
+        loadProducts();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('pricing-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await window.VTrackAPI.post(`/products/${currentPricingProductId}/pricing`, {
+        currency: document.getElementById('pr-currency').value,
+        hardwarePrice: Number(document.getElementById('pr-hardware').value),
+        installationFee: Number(document.getElementById('pr-install').value),
+        monthlySubscriptionPrice: Number(document.getElementById('pr-monthly').value),
+        annualSubscriptionPrice: Number(document.getElementById('pr-annual').value),
+        simDataFee: Number(document.getElementById('pr-sim').value),
+      });
+      openPricing(currentPricingProductId, document.getElementById('pricingModalTitle').textContent.replace('Pricing — ', ''));
+    });
+
+    loadCategories();
+    loadProducts();
+  </script>
+</body>
+</html>

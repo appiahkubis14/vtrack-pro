@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Batteries & Charging | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div><h4 class="fw-bold mb-1">Batteries & Charging</h4><p class="text-muted mb-0">Every 72V pack, where it is, and the charging done at each hub.</p></div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="d-flex gap-2 mb-3 align-items-center"><select class="form-select form-select-sm w-auto" id="hub-select"></select></div>
+    <div class="row g-3 mb-4" id="battery-stats"></div>    <div class="card mb-4"><div class="card-header fw-semibold">Batteries</div><div class="card-body p-0" id="battery-list"></div></div>    <div class="card mb-4"><div class="card-header fw-semibold">Today's charging</div><div class="card-body p-0" id="charge-list"></div></div>    <div class="card mb-4"><div class="card-header fw-semibold">Recent swaps</div><div class="card-body p-0" id="swap-list"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const canEdit = Biz.can(...Biz.ADMIN, 'fleet_manager', 'hub_manager');
+      let hubs = [], batteries = [], vehicles = [], riders = [], charges = [];
+      const hubId = () => document.getElementById('hub-select').value;
+      const serial = (id) => (batteries.find((b) => b.id === id) || {}).serialNo || '—';
+      const plate = (id) => (vehicles.find((v) => v.id === id) || {}).plateNumber || '—';
+      const rider = (id) => (riders.find((r) => r.id === id) || {}).fullName || '—';
+
+      async function load() {
+        const q = hubId() ? `?hubId=${hubId()}` : '';
+        const [b, v, r, c, s] = await Promise.all([VTrackAPI.get('/batteries' + q), VTrackAPI.get('/vehicles?limit=200'), VTrackAPI.get('/riders' + q), VTrackAPI.get('/charge-events' + (q ? q + '&' : '?') + 'date=' + Biz.today()), VTrackAPI.get('/battery-swaps' + q)]);
+        batteries = b.data; vehicles = v.data; riders = r.data; charges = c.data;
+        const n = (st) => batteries.filter((x) => x.status === st).length;
+        document.getElementById('battery-stats').innerHTML = Biz.stat('Available', n('available')) + Biz.stat('On vehicles', n('fitted')) + Biz.stat('Charging', n('charging')) + Biz.stat('Faulty or missing', n('faulty') + n('missing'));
+        document.getElementById('battery-list').innerHTML = Biz.table([
+          { label: 'Serial', render: (x) => `<span class="fw-medium">${Biz.esc(x.serialNo)}</span>` }, { label: 'Spec', render: (x) => `${x.voltage}V ${x.capacityAh}Ah` },
+          { label: 'Status', render: (x) => Biz.badge(x.status) }, { label: 'On vehicle', render: (x) => (x.currentVehicleId ? Biz.esc(plate(x.currentVehicleId)) : '—') },
+          { label: 'Cycles', render: (x) => x.cycleCount },
+          { label: '', cls: 'text-end', render: (x) => {
+              if (!canEdit) return '';
+              if (x.status === 'available') return `<button class="btn btn-sm btn-outline-primary me-1" data-fit="${x.id}">Fit to vehicle</button><button class="btn btn-sm btn-outline-secondary" data-charge="${x.id}">Start charge</button>`;
+              if (x.status === 'charging' && !charges.some((c) => c.batteryId === x.id && c.status === 'open')) return `<button class="btn btn-sm btn-outline-secondary" data-charge="${x.id}">Start charge</button>`;
+              return ''; } },
+        ], batteries, 'No batteries recorded yet.');
+        document.getElementById('charge-list').innerHTML = Biz.table([
+          { label: 'Battery', render: (x) => Biz.esc(serial(x.batteryId)) }, { label: 'Rider', render: (x) => Biz.esc(x.riderId ? rider(x.riderId) : '—') },
+          { label: 'Started', render: (x) => new Date(x.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+          { label: 'kWh', render: (x) => (x.kwh ?? '—') }, { label: 'Fee', cls: 'text-end', render: (x) => Biz.ghs(x.feePesewas) }, { label: 'Status', render: (x) => Biz.badge(x.status) },
+          { label: '', cls: 'text-end', render: (x) => (canEdit && x.status === 'open' ? `<button class="btn btn-sm btn-success" data-finish="${x.id}">Finish</button>` : (canEdit && x.status === 'completed' && Number(x.feePesewas) > 0 ? `<button class="btn btn-sm btn-outline-primary" data-paycharge="${x.id}" data-fee="${x.feePesewas}">Take payment now</button>` : '')) },
+        ], charges, 'No charging recorded today.');
+        document.getElementById('swap-list').innerHTML = Biz.table([
+          { label: 'When', render: (x) => new Date(x.swappedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }, { label: 'Vehicle', render: (x) => Biz.esc(plate(x.vehicleId)) },
+          { label: 'Rider', render: (x) => Biz.esc(x.riderId ? rider(x.riderId) : '—') }, { label: 'Removed', render: (x) => Biz.esc(x.batteryOutId ? serial(x.batteryOutId) : '—') }, { label: 'Fitted', render: (x) => Biz.esc(serial(x.batteryInId)) },
+        ], s.data, 'No swaps recorded.');
+      }
+
+      if (canEdit) {
+        const sw = document.createElement('button'); sw.className = 'btn btn-outline-primary btn-sm'; sw.textContent = 'Record a swap';
+        sw.onclick = () => {
+          const avail = batteries.filter((x) => x.status === 'available');
+          const based = vehicles.filter((v) => v.hubId && ['assigned','active','sold'].includes(v.lifecycleStatus));
+          if (!avail.length) return Biz.toast('No charged batteries are available at the hub.', 'warning');
+          Biz.form({ title: 'Swap a battery', intro: 'The battery on the vehicle goes back to the hub to charge; the charged one is fitted.', fields: [
+            { name: 'vehicleId', label: 'Vehicle', type: 'select', required: true, options: Biz.opts(based, (v) => v.id, (v) => v.plateNumber) },
+            { name: 'batteryInId', label: 'Charged battery to fit', type: 'select', required: true, options: Biz.opts(avail, (x) => x.id, (x) => x.serialNo) },
+            { name: 'riderId', label: 'Rider', type: 'select', options: Biz.opts(riders, (r) => r.id, (r) => r.fullName) },
+          ], onSubmit: async (v) => { await VTrackAPI.post('/battery-swaps', v); Biz.toast('Swap recorded'); load(); } });
+        };
+        const add = document.createElement('button'); add.className = 'btn btn-primary btn-sm'; add.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add battery';
+        add.onclick = () => Biz.form({ title: 'Register a battery', fields: [
+          { name: 'serialNo', label: 'Serial number', required: true }, { name: 'gpsModuleId', label: 'Built-in GPS module id' },
+          { name: 'hubId', label: 'Hub', type: 'select', required: true, value: hubId(), options: Biz.opts(hubs, (h) => h.id, (h) => h.name) },
+        ], onSubmit: async (v) => { await VTrackAPI.post('/batteries', v); Biz.toast('Battery registered'); load(); } });
+        document.getElementById('page-actions').append(sw, add);
+      }
+
+      document.addEventListener('click', (e) => {
+        const t = e.target.closest('button'); if (!t) return;
+        if (t.dataset.fit) Biz.form({ title: 'Fit battery to a vehicle', intro: 'For a vehicle that has no battery yet. To replace one, record a swap instead.', fields: [
+          { name: 'vehicleId', label: 'Vehicle', type: 'select', required: true, options: Biz.opts(vehicles.filter((v) => v.lifecycleStatus !== 'in_stock'), (v) => v.id, (v) => v.plateNumber) }],
+          onSubmit: async (v) => { await VTrackAPI.post(`/batteries/${t.dataset.fit}/fit`, v); Biz.toast('Battery fitted'); load(); } });
+        if (t.dataset.paycharge) Biz.form({ title: 'Take payment for this charge', intro: `The rider pays ${Biz.ghs(t.dataset.fee)} now instead of it being taken from the day's collections.`, submitLabel: 'Record payment', fields: [
+          { name: 'method', label: 'Paid by', type: 'select', required: true, value: 'cash', options: [{ value: 'cash', label: 'Cash' }, { value: 'momo', label: 'Mobile money' }, { value: 'bank', label: 'Bank' }] },
+          { name: 'reference', label: 'Receipt number or transaction id', required: true },
+        ], onSubmit: async (v) => { await VTrackAPI.post(`/charge-events/${t.dataset.paycharge}/pay`, v); Biz.toast('Payment recorded'); load(); } });
+        if (t.dataset.charge) Biz.form({ title: `Start charging ${serial(t.dataset.charge)}`, fields: [{ name: 'riderId', label: 'Rider this charge is for', type: 'select', options: Biz.opts(riders, (r) => r.id, (r) => r.fullName) }],
+          submitLabel: 'Start', onSubmit: async (v) => { await VTrackAPI.post('/charge-events', { batteryId: t.dataset.charge, ...v }); Biz.toast('Charging started'); load(); } });
+        if (t.dataset.finish) Biz.form({ title: 'Finish charging', fields: [
+          { name: 'kwh', label: 'Energy used (kWh)', type: 'number', col: 6 }, { name: 'feePesewas', label: 'Charging fee for the rider', type: 'money', col: 6, hint: 'Collected from the rider in the daily settlement.' }],
+          submitLabel: 'Finish', onSubmit: async (v) => { await VTrackAPI.post(`/charge-events/${t.dataset.finish}/finish`, v); Biz.toast('Charge completed'); load(); } });
+      });
+      Biz.run(async () => {
+        hubs = (await VTrackAPI.get('/hubs')).data;
+        const sel = document.getElementById('hub-select');
+        sel.innerHTML = '<option value="">All my hubs</option>' + hubs.map((h) => `<option value="${h.id}">${Biz.esc(h.name)}</option>`).join('');
+        sel.addEventListener('change', () => Biz.run(load));
+        await load();
+      });
+    });
+
+  </script>
+</body>
+</html>

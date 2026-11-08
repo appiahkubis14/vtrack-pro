@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vehicles | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Vehicles</h4>
+        <p class="text-muted mb-0" id="vehicles-subtitle">Loading...</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="card"><div class="card-body p-0" id="vehicles-list"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+    Biz.start(() => {
+      const canEdit = Biz.can(...Biz.ADMIN, 'fleet_manager', 'hub_manager');
+      let vehicles = [], hubs = [], owners = [];
+      const FUELS = ['petrol', 'diesel', 'electric', 'hybrid', 'gas', 'lpg'];
+      const fields = (v = {}) => [
+        { name: 'plateNumber', label: 'Plate number', required: true, value: v.plateNumber, col: 6 },
+        { name: 'fuelType', label: 'Fuel type', type: 'select', value: v.fuelType, col: 6, options: FUELS.map((f) => ({ value: f, label: f[0].toUpperCase() + f.slice(1) })) },
+        { name: 'make', label: 'Make', value: v.make, col: 6 }, { name: 'model', label: 'Model', value: v.model, col: 6 },
+        { name: 'year', label: 'Year', type: 'number', value: v.year, col: 4 }, { name: 'color', label: 'Colour', value: v.color, col: 4 }, { name: 'odometer', label: 'Odometer (km)', type: 'number', value: v.odometer != null ? Number(v.odometer) : undefined, col: 4 },
+        { name: 'hubId', label: 'Hub', type: 'select', value: v.hubId, col: 6, options: Biz.opts(hubs, (h) => h.id, (h) => h.name) },
+        { name: 'ownerId', label: 'Owner', type: 'select', value: v.ownerId, col: 6, options: Biz.opts(owners, (o) => o.id, (o) => o.name) },
+        { name: 'chassisNo', label: 'Chassis number', value: v.chassisNo, col: 6 }, { name: 'motorNo', label: 'Motor number', value: v.motorNo, col: 6 },
+        { name: 'vin', label: 'VIN', value: v.vin, col: 6 }, { name: 'registrationNumber', label: 'Registration number', value: v.registrationNumber, col: 6 },
+        { name: 'registrationExpiry', label: 'Registration expires', type: 'date', value: v.registrationExpiry ? String(v.registrationExpiry).slice(0, 10) : '', col: 4 },
+        { name: 'insurancePolicy', label: 'Insurance policy', value: v.insurancePolicy, col: 4 },
+        { name: 'insuranceExpiry', label: 'Insurance expires', type: 'date', value: v.insuranceExpiry ? String(v.insuranceExpiry).slice(0, 10) : '', col: 4 },
+        { name: 'inspectionDueDate', label: 'Inspection due', type: 'date', value: v.inspectionDueDate ? String(v.inspectionDueDate).slice(0, 10) : '', col: 4 },
+        ...(v.id ? [{ name: 'isActive', label: 'Active', type: 'select', value: v.isActive === false ? 'false' : 'true', col: 4, options: [{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive (hidden from the map)' }] }] : []),
+      ];
+      const clean = (v) => { const out = { ...v }; if (out.isActive !== undefined) out.isActive = out.isActive === 'true'; return out; };
+      const dateCell = (d) => { if (!d) return '<span class="text-muted">—</span>'; const day = String(d).slice(0, 10), left = Math.round((new Date(day) - new Date(new Date().toDateString())) / 86400000); return left < 0 ? `<span class="text-danger fw-medium" title="Expired">${day}</span>` : left <= 30 ? `<span class="text-warning fw-medium" title="Expires in ${left} days">${day}</span>` : day; };
+      async function load() {
+        const [v, h, o] = await Promise.all([VTrackAPI.get('/vehicles?limit=500'), VTrackAPI.get('/hubs').catch(() => ({ data: [] })), VTrackAPI.get('/owners').catch(() => ({ data: [] }))]);
+        vehicles = v.data; hubs = h.data; owners = o.data;
+        const hubName = new Map(hubs.map((x) => [x.id, x.name]));
+        document.getElementById('vehicles-subtitle').textContent = `${v.total} vehicle${v.total === 1 ? '' : 's'} registered`;
+        document.getElementById('vehicles-list').innerHTML = Biz.table([
+          { label: 'Plate', render: (x) => `<a class="fw-medium text-decoration-none" href="vehicle-history.html?id=${x.id}" title="Open history">${Biz.esc(x.plateNumber)}</a>`, sortValue: (x) => x.plateNumber },
+          { label: 'Make / Model', render: (x) => Biz.esc(`${x.make ?? ''} ${x.model ?? ''}`.trim() || '—') },
+          { label: 'Year', render: (x) => Biz.esc(x.year ?? '—') },
+          { label: 'Fuel', render: (x) => `<span class="text-capitalize">${Biz.esc(x.fuelType ?? '—')}</span>` },
+          { label: 'Odometer', cls: 'text-end', sortValue: (x) => Number(x.odometer), render: (x) => `${Number(x.odometer).toLocaleString()} km` },
+          { label: 'Hub', render: (x) => Biz.esc(hubName.get(x.hubId) || '—') },
+          { label: 'Insurance', sort: true, filter: false, sortValue: (x) => x.insuranceExpiry || '', render: (x) => dateCell(x.insuranceExpiry) },
+          { label: 'Status', render: (x) => (x.isActive ? '<span class="badge bg-success-subtle text-success">Active</span>' : '<span class="badge bg-secondary-subtle text-secondary">Inactive</span>') },
+          { label: '', cls: 'text-end text-nowrap', render: (x) => `<a class="btn btn-sm btn-outline-secondary" href="vehicle-history.html?id=${x.id}"><i class="bi bi-clock-history me-1"></i>History</a> ` + (canEdit ? `<button class="btn btn-sm btn-outline-primary" data-edit="${x.id}">Edit</button> <button class="btn btn-sm btn-outline-danger" data-del="${x.id}" title="Delete"><i class="bi bi-trash"></i></button>` : '') },
+        ], vehicles, 'No vehicles yet - add one to get started.');
+      }
+      if (canEdit) {
+        const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add vehicle';
+        b.onclick = () => Biz.form({ title: 'Register a vehicle', fields: fields(), submitLabel: 'Register', onSubmit: async (v) => { await VTrackAPI.post('/vehicles', clean(v)); Biz.toast('Vehicle registered'); load(); } });
+        document.getElementById('page-actions').appendChild(b);
+      }
+      document.getElementById('vehicles-list').addEventListener('click', async (e) => {
+        const ed = e.target.closest('[data-edit]'), del = e.target.closest('[data-del]');
+        if (ed) { const v = vehicles.find((x) => x.id === ed.dataset.edit); Biz.form({ title: `Edit ${v.plateNumber}`, clearable: true, fields: fields(v), onSubmit: async (b) => { await VTrackAPI.put(`/vehicles/${v.id}`, clean(b)); Biz.toast('Saved'); load(); } }); }
+        if (del) { const v = vehicles.find((x) => x.id === del.dataset.del); if (!(await Biz.confirmAction(`Delete vehicle ${v.plateNumber}? This cannot be undone.`))) return; Biz.run(async () => { await VTrackAPI.del(`/vehicles/${v.id}`); load(); }, 'Vehicle deleted'); }
+      });
+      Biz.run(load);
+    });
+  </script>
+</body>
+</html>

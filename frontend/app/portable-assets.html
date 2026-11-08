@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portable Assets | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Portable Assets</h4>
+        <p class="text-muted mb-0" id="assets-subtitle">Loading...</p>
+      </div>
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assetModal"><i class="bi bi-plus-lg me-1"></i>Register Asset</button>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Asset</th>
+                <th>Type</th>
+                <th>Power Profile</th>
+                <th>QR Code</th>
+                <th>Status</th>
+                <th class="pe-4 text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="assets-table-body">
+              <tr><td colspan="6" class="text-center text-muted py-5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Register Asset Modal -->
+  <div class="modal fade" id="assetModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="asset-form">
+          <div class="modal-header"><h5 class="modal-title">Register Portable Asset</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div id="asset-error" class="alert alert-danger d-none"></div>
+            <label class="form-label">Asset Name</label>
+            <input type="text" class="form-control mb-2" id="a-name" required>
+            <label class="form-label">Asset Type</label>
+            <select class="form-select mb-2" id="a-type">
+              <option value="vehicle">Vehicle</option>
+              <option value="trailer">Trailer</option>
+              <option value="container">Container</option>
+              <option value="generator">Generator</option>
+              <option value="construction_equipment">Construction Equipment</option>
+              <option value="cargo">Cargo</option>
+              <option value="package">Package</option>
+              <option value="equipment">Equipment</option>
+              <option value="investigation">Investigation</option>
+            </select>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="a-magnetic" checked>
+              <label class="form-check-label" for="a-magnetic">Magnetic casing</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="a-covert">
+              <label class="form-check-label" for="a-covert">Covert-capable device</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="asset-submit">Register</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deploy Modal -->
+  <div class="modal fade" id="deployModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="deploy-form">
+          <div class="modal-header"><h5 class="modal-title">Deploy Asset</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div id="deploy-error" class="alert alert-danger d-none"></div>
+            <label class="form-label">Purpose</label>
+            <input type="text" class="form-control mb-2" id="d-purpose" placeholder="Fraud investigation, cargo tracking...">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-control mb-2" id="d-location">
+            <label class="form-label">Expected Return Date</label>
+            <input type="date" class="form-control mb-3" id="d-return-date">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="d-covert">
+              <label class="form-check-label" for="d-covert">Request covert mode (requires a second approver)</label>
+            </div>
+            <div id="covert-justification-group" class="d-none">
+              <label class="form-label">Legal Justification (min 20 characters)</label>
+              <textarea class="form-control" id="d-justification" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="deploy-submit">Deploy</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-tables.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    const statusColor = { available: 'success', deployed: 'primary', maintenance: 'warning', lost: 'danger', retired: 'secondary' };
+    const POWER_PROFILES = ['continuous', 'interval_10s', 'interval_30s', 'interval_1m', 'interval_5m', 'interval_15m', 'heartbeat_1h', 'heartbeat_6h', 'heartbeat_24h', 'motion_triggered', 'geofence_triggered', 'sos_only', 'deep_sleep'];
+
+    let currentAssetId = null;
+
+    async function loadAssets() {
+      const res = await window.VTrackAPI.get('/portable-assets');
+      const assets = res.data;
+      document.getElementById('assets-subtitle').textContent = `${assets.length} asset${assets.length === 1 ? '' : 's'} registered`;
+
+      const tbody = document.getElementById('assets-table-body');
+      if (!assets.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-5">No portable assets yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = assets
+        .map((a) => {
+          const color = statusColor[a.status] || 'secondary';
+          const profileOptions = POWER_PROFILES.map((p) => `<option value="${p}" ${p === a.currentPowerProfile ? 'selected' : ''}>${p.replace(/_/g, ' ')}</option>`).join('');
+          return `
+        <tr>
+          <td class="ps-4">
+            <div class="fw-medium">${a.assetName}</div>
+            ${a.isCovertCapable ? '<span class="badge bg-dark-subtle text-dark fs-11"><i class="bi bi-eye-slash me-1"></i>Covert-capable</span>' : ''}
+          </td>
+          <td class="text-capitalize fs-13">${a.assetType.replace(/_/g, ' ')}</td>
+          <td><select class="form-select form-select-sm profile-select" data-id="${a.id}" style="width:160px">${profileOptions}</select></td>
+          <td class="font-monospace fs-13">${a.qrActivationCode ?? '—'}</td>
+          <td><span class="badge bg-${color}-subtle text-${color} text-capitalize">${a.status}</span></td>
+          <td class="pe-4 text-end">
+            ${a.status === 'available'
+              ? `<button class="btn btn-sm btn-outline-primary deploy-btn" data-id="${a.id}">Deploy</button>`
+              : a.status === 'deployed'
+                ? `<button class="btn btn-sm btn-outline-secondary return-btn" data-id="${a.id}">Mark Returned</button>`
+                : ''}
+          </td>
+        </tr>`;
+        })
+        .join('');
+
+      tbody.querySelectorAll('.profile-select').forEach((sel) => {
+        sel.addEventListener('change', async () => {
+          await window.VTrackAPI.post(`/portable-assets/${sel.dataset.id}/power-profile`, { profile: sel.value });
+        });
+      });
+      tbody.querySelectorAll('.deploy-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          currentAssetId = btn.dataset.id;
+          new bootstrap.Modal(document.getElementById('deployModal')).show();
+        });
+      });
+      tbody.querySelectorAll('.return-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const deploymentsRes = await window.VTrackAPI.get(`/portable-assets/${btn.dataset.id}/deployments`);
+          const active = deploymentsRes.data.find((d) => d.status === 'active');
+          if (!active) return alert('No active deployment found for this asset.');
+          const condition = prompt('Return condition (good/damaged/lost/not_returned):', 'good');
+          if (!condition) return;
+          try {
+            await window.VTrackAPI.post(`/portable-assets/${btn.dataset.id}/return`, { deploymentId: active.id, condition });
+            loadAssets();
+          } catch (err) {
+            alert(err.message);
+          }
+        });
+      });
+    }
+
+    document.getElementById('d-covert').addEventListener('change', (e) => {
+      document.getElementById('covert-justification-group').classList.toggle('d-none', !e.target.checked);
+    });
+
+    document.getElementById('asset-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('asset-error');
+      errorBox.classList.add('d-none');
+      const submitBtn = document.getElementById('asset-submit');
+      submitBtn.disabled = true;
+      try {
+        await window.VTrackAPI.post('/portable-assets', {
+          assetName: document.getElementById('a-name').value,
+          assetType: document.getElementById('a-type').value,
+          isMagneticCasing: document.getElementById('a-magnetic').checked,
+          isCovertCapable: document.getElementById('a-covert').checked,
+        });
+        bootstrap.Modal.getInstance(document.getElementById('assetModal')).hide();
+        document.getElementById('asset-form').reset();
+        loadAssets();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('deploy-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('deploy-error');
+      errorBox.classList.add('d-none');
+      const submitBtn = document.getElementById('deploy-submit');
+      submitBtn.disabled = true;
+      const requestCovert = document.getElementById('d-covert').checked;
+      try {
+        await window.VTrackAPI.post(`/portable-assets/${currentAssetId}/deploy`, {
+          deploymentPurpose: document.getElementById('d-purpose').value || undefined,
+          deploymentLocation: document.getElementById('d-location').value || undefined,
+          expectedReturnDate: document.getElementById('d-return-date').value || undefined,
+          requestCovert,
+          covertJustification: requestCovert ? document.getElementById('d-justification').value : undefined,
+        });
+        bootstrap.Modal.getInstance(document.getElementById('deployModal')).hide();
+        document.getElementById('deploy-form').reset();
+        loadAssets();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    loadAssets();
+  </script>
+</body>
+</html>

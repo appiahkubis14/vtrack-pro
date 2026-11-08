@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vehicle Stock | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Vehicle Stock</h4>
+        <p class="text-muted mb-0">Every unit received: set its real plate, chassis and motor numbers, or retire it for good.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="card mb-3"><div class="card-body d-flex gap-2 align-items-end"><div><label class="form-label fs-13 mb-1">Status</label><select class="form-select form-select-sm" id="f-status"><option value="">All</option><option value="in_stock">In stock</option><option value="sold">Sold</option><option value="assigned">Assigned</option><option value="active">Active</option><option value="maintenance">Maintenance</option><option value="retired">Retired</option></select></div></div></div>
+    <div class="card"><div class="card-body p-0" id="list"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const canEdit = Biz.can(...Biz.ADMIN, 'fleet_manager');
+      let rows = [];
+      async function load() {
+        const s = document.getElementById('f-status').value;
+        rows = (await VTrackAPI.get('/business/vehicles' + (s ? '?status=' + s : ''))).data;
+        document.getElementById('list').innerHTML = Biz.table([
+          { label: 'Plate', render: (v) => `<span class="fw-medium">${Biz.esc(v.plateNumber)}</span>${/^UNIT-/.test(v.plateNumber) ? ' <span class="badge bg-warning-subtle text-warning">placeholder</span>' : ''}` },
+          { label: 'Model', render: (v) => Biz.esc([v.brand, v.modelName].filter(Boolean).join(' ') || '—') }, { label: 'Type', render: (v) => Biz.label(v.vehicleType || '') },
+          { label: 'Chassis no.', render: (v) => Biz.esc(v.chassisNo || '—') }, { label: 'Motor no.', render: (v) => Biz.esc(v.motorNo || '—') },
+          { label: 'Status', render: (v) => Biz.badge(v.lifecycleStatus) }, { label: 'Owner', render: (v) => Biz.esc(v.ownerName || '—') }, { label: 'Consignment', render: (v) => Biz.esc(v.consignmentRef || '—') },
+          { label: '', cls: 'text-end', render: (v) => !canEdit || v.lifecycleStatus === 'retired' ? '' : `<button class="btn btn-sm btn-outline-primary" data-edit="${v.id}">Edit</button> ${['in_stock', 'returned', 'maintenance', 'stolen'].includes(v.lifecycleStatus) ? `<button class="btn btn-sm btn-outline-danger" data-retire="${v.id}">Retire</button>` : ''}` },
+        ], rows, 'No vehicles in this view.');
+      }
+      document.getElementById('f-status').addEventListener('change', () => Biz.run(load));
+      document.addEventListener('click', (e) => {
+        const t = e.target.closest('button'); if (!t) return;
+        if (t.dataset.edit) { const v = rows.find((x) => x.id === t.dataset.edit); Biz.form({ title: `Edit ${v.plateNumber}`, fields: [
+          { name: 'plateNumber', label: 'Registration plate', required: true, value: v.plateNumber }, { name: 'chassisNo', label: 'Chassis number', value: v.chassisNo, col: 6 }, { name: 'motorNo', label: 'Motor number', value: v.motorNo, col: 6 }, { name: 'color', label: 'Colour', value: v.color },
+        ], onSubmit: async (b) => { await VTrackAPI.put(`/business/vehicles/${v.id}`, b); Biz.toast('Vehicle updated'); load(); } }); }
+        if (t.dataset.retire) { const v = rows.find((x) => x.id === t.dataset.retire); Biz.form({ title: `Retire ${v.plateNumber}`, intro: 'This removes the vehicle from service permanently and cannot be undone.', submitLabel: 'Retire vehicle', fields: [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
+          onSubmit: async (b) => { await VTrackAPI.post(`/business/vehicles/${v.id}/retire`, b); Biz.toast('Vehicle retired'); load(); } }); }
+      });
+      Biz.run(load);
+    });
+  </script>
+</body>
+</html>

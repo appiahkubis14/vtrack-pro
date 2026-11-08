@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devices | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold mb-1">Devices</h4>
+        <p class="text-muted mb-0" id="devices-subtitle">Loading...</p>
+      </div>
+      <div class="d-flex gap-2">
+        <span class="badge bg-success-subtle text-success" id="online-badge">– online</span>
+        <span class="badge bg-secondary-subtle text-secondary" id="offline-badge">– offline</span>
+        <button class="btn btn-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#addDeviceModal"><i class="bi bi-plus-lg me-1"></i>Register Device</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-0">
+        <div id="device-list" class="p-3"><div class="text-muted text-center py-4">Loading…</div></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Register Device Modal -->
+  <div class="modal fade" id="addDeviceModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="add-device-form">
+          <div class="modal-header">
+            <h5 class="modal-title">Register a Device</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="add-device-error" class="alert alert-danger d-none"></div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">IMEI *</label>
+                <input type="text" class="form-control font-monospace" id="d-imei" required maxlength="20" placeholder="e.g. 863123456789012">
+                <div class="form-text">Found on the device label or its packaging.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Protocol *</label>
+                <select class="form-select" id="d-protocol" required>
+                  <option value="gt06">GT06</option>
+                  <option value="tk103">TK103</option>
+                  <option value="teltonika">Teltonika</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Device Name</label>
+                <input type="text" class="form-control" id="d-name" placeholder="e.g. Tracker - DEMO-002">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Model</label>
+                <input type="text" class="form-control" id="d-model" placeholder="e.g. GT06N">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Attach to Vehicle</label>
+                <select class="form-select" id="d-vehicle">
+                  <option value="">— Not attached yet —</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">SIM Number</label>
+                <input type="text" class="form-control" id="d-sim" placeholder="Optional">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="add-device-submit">Register</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+    window.VTrackAPI.requireAuth();
+    window.VTrackNav.render();
+
+    const statusColor = { moving: 'success', idle: 'info', stopped: 'secondary', parked: 'secondary', offline: 'danger' };
+
+    let devices = [], vehicles = [];
+    const canWrite = Biz.can(...Biz.ADMIN, 'fleet_manager', 'hub_manager');
+    const plateOf = (id) => (vehicles.find((v) => v.id === id) || {}).plateNumber || '—';
+    async function loadDevices() {
+      // GET /devices returns { data: [Device[], count] } - a tuple, not an object.
+      const res = await window.VTrackAPI.get('/devices?limit=500');
+      const [list, count] = res.data; devices = list;
+      document.getElementById('devices-subtitle').textContent = `${count} device${count === 1 ? '' : 's'} registered`;
+      document.getElementById('online-badge').textContent = `${devices.filter((d) => d.status !== 'offline').length} online`;
+      document.getElementById('offline-badge').textContent = `${devices.filter((d) => d.status === 'offline').length} offline`;
+      document.getElementById('device-list').innerHTML = Biz.table([
+        { label: 'Device', render: (d) => `<span class="fw-medium">${Biz.esc(d.name ?? d.imei)}</span>` },
+        { label: 'IMEI', render: (d) => `<span class="font-monospace fs-13">${Biz.esc(d.imei)}</span>` },
+        { label: 'Vehicle', render: (d) => (d.vehicleId ? Biz.esc(plateOf(d.vehicleId)) : '—'), sortValue: (d) => plateOf(d.vehicleId) },
+        { label: 'Protocol', render: (d) => `<span class="text-uppercase fs-13">${Biz.esc(d.protocol)}</span>` },
+        { label: 'Status', render: (d) => Biz.badge(d.status) },
+        { label: 'Battery', render: (d) => `${d.batteryLevel ?? 0}%`, sortValue: (d) => d.batteryLevel ?? 0 },
+        { label: 'Last seen', render: (d) => `<span class="fs-13 text-muted">${d.lastCommunicationAt ? new Date(d.lastCommunicationAt).toLocaleString() : 'Never'}</span>`, sortValue: (d) => d.lastCommunicationAt || '' },
+        { label: '', cls: 'text-end', render: (d) => (canWrite ? `<div class="btn-group btn-group-sm"><button class="btn btn-outline-primary" data-dedit="${d.id}">Edit</button><button class="btn btn-outline-secondary cmd-btn" data-id="${d.id}" data-cmd="request_location" title="Request location"><i class="bi bi-geo-alt"></i></button><button class="btn btn-outline-secondary cmd-btn" data-id="${d.id}" data-cmd="device_reboot" title="Reboot"><i class="bi bi-arrow-clockwise"></i></button></div>` : '') },
+      ], devices, 'No devices registered yet.');
+    }
+    document.getElementById('device-list').addEventListener('click', async (e) => {
+      const ed = e.target.closest('[data-dedit]');
+      if (ed) {
+        const d = devices.find((x) => x.id === ed.dataset.dedit);
+        return Biz.form({ title: `Edit ${d.name ?? d.imei}`, clearable: true, intro: 'The IMEI is the device identity and cannot change.', fields: [
+          { name: 'name', label: 'Name', value: d.name || '' }, { name: 'model', label: 'Model', col: 6, value: d.model || '' }, { name: 'simNumber', label: 'SIM number', col: 6, value: d.simNumber || '' },
+          { name: 'protocol', label: 'Protocol', type: 'select', required: true, value: d.protocol, options: ['gt06', 'tk103', 'teltonika'].map((p) => ({ value: p, label: p.toUpperCase() })) },
+          { name: 'vehicleId', label: 'Attached to vehicle', type: 'select', value: d.vehicleId || '', options: Biz.opts(vehicles, (v) => v.id, (v) => v.plateNumber) },
+        ], onSubmit: async (v) => { await VTrackAPI.put(`/devices/${d.id}`, v); Biz.toast('Device saved'); loadDevices(); } });
+      }
+      const btn = e.target.closest('.cmd-btn'); if (!btn) return;
+      btn.disabled = true; const original = btn.innerHTML; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+      try { await window.VTrackAPI.post(`/devices/${btn.dataset.id}/command`, { command: btn.dataset.cmd }); Biz.toast('Command sent'); }
+      catch (err) { Biz.toast(`Command failed: ${err.message}`, 'danger'); }
+      finally { btn.disabled = false; btn.innerHTML = original; }
+    });
+    if (!canWrite) document.querySelector('[data-bs-target="#addDeviceModal"]')?.remove();
+
+    async function loadVehicleOptions() {
+      const res = await window.VTrackAPI.get('/vehicles?limit=200'); vehicles = res.data;
+      const select = document.getElementById('d-vehicle');
+      res.data.forEach((v) => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.plateNumber}${v.make ? ` — ${v.make} ${v.model ?? ''}` : ''}`;
+        select.appendChild(opt);
+      });
+    }
+    loadVehicleOptions().then(loadDevices).catch(() => loadDevices());
+
+    document.getElementById('add-device-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('add-device-error');
+      errorBox.classList.add('d-none');
+      const submitBtn = document.getElementById('add-device-submit');
+      submitBtn.disabled = true;
+
+      const body = {
+        imei: document.getElementById('d-imei').value.trim(),
+        protocol: document.getElementById('d-protocol').value,
+        name: document.getElementById('d-name').value.trim() || undefined,
+        model: document.getElementById('d-model').value.trim() || undefined,
+        vehicleId: document.getElementById('d-vehicle').value || undefined,
+        simNumber: document.getElementById('d-sim').value.trim() || undefined,
+      };
+
+      try {
+        await window.VTrackAPI.post('/devices', body);
+        bootstrap.Modal.getInstance(document.getElementById('addDeviceModal')).hide();
+        document.getElementById('add-device-form').reset();
+        loadDevices();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

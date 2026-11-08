@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Owners | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h4 class="fw-bold mb-1">Owners</h4>
+        <p class="text-muted mb-0">Investors and small businesses who own vehicles on the platform.</p>
+      </div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="card mb-4"><div class="card-body p-0" id="owners-list"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const canEdit = Biz.can(...Biz.ADMIN, 'fleet_manager', 'finance');
+      let owners = [];
+      const fields = (o = {}) => [
+        { name: 'ownerType', label: 'Type', type: 'select', required: true, value: o.ownerType || 'individual', col: 4, options: [{ value: 'individual', label: 'Individual' }, { value: 'sme', label: 'Small business' }] },
+        { name: 'name', label: 'Full name / business name', required: true, value: o.name, col: 8 },
+        { name: 'phone', label: 'Phone', required: true, value: o.phone, col: 6 }, { name: 'email', label: 'Email', value: o.email, col: 6 },
+        { name: 'momoNumber', label: 'Mobile money number', col: 6, hint: o.id ? 'Leave blank to keep the saved number.' : 'Stored encrypted.' },
+        { name: 'idDocument', label: 'Ghana Card / ID number', col: 6, hint: o.id ? 'Leave blank to keep the saved number.' : 'Stored encrypted.' },
+        ...(o.id ? [{ name: 'kycStatus', label: 'ID check', type: 'select', value: o.kycStatus, options: ['pending','verified','rejected'].map((s) => ({ value: s, label: s })) }] : []),
+      ];
+      async function load() {
+        const r = await VTrackAPI.get('/owners'); owners = r.data;
+        document.getElementById('owners-list').innerHTML = Biz.table([
+          { label: 'Name', render: (o) => `<span class="fw-medium">${Biz.esc(o.name)}</span>` }, { label: 'Type', render: (o) => Biz.label(o.ownerType) },
+          { label: 'Phone', render: (o) => Biz.esc(o.phone) }, { label: 'Mobile money', render: (o) => Biz.esc(o.momoNumberMasked || '—') },
+          { label: 'ID', render: (o) => (o.idDocumentLast4 ? '••••' + Biz.esc(o.idDocumentLast4) : '—') }, { label: 'ID check', render: (o) => Biz.badge(o.kycStatus) },
+          { label: '', cls: 'text-end', render: (o) => (canEdit ? `<button class="btn btn-sm btn-outline-primary" data-id="${o.id}">Edit</button>` : '') },
+        ], owners, 'No owners yet.');
+      }
+      if (canEdit) {
+        const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add owner';
+        b.onclick = () => Biz.form({ title: 'Add an owner', fields: fields(), onSubmit: async (v) => { await VTrackAPI.post('/owners', v); Biz.toast('Owner added'); load(); } });
+        document.getElementById('page-actions').appendChild(b);
+      }
+      document.getElementById('owners-list').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-id]'); if (!btn) return;
+        const o = owners.find((x) => x.id === btn.dataset.id);
+        Biz.form({ title: `Edit ${o.name}`, fields: fields(o), onSubmit: async (v) => { await VTrackAPI.put(`/owners/${o.id}`, v); Biz.toast('Saved'); load(); } });
+      });
+      Biz.run(load);
+    });
+
+  </script>
+</body>
+</html>

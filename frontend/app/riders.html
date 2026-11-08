@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riders & Assignments | V-Track Pro</title>
+  <script src="js/vtrack-theme.js"></script>
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="css/vtrack-shell.css">
+</head>
+<body>
+  <div id="vtrack-header"></div>
+  <main class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div><h4 class="fw-bold mb-1">Riders & Assignments</h4><p class="text-muted mb-0">Who rides which vehicle, and the daily amounts agreed for each.</p></div>
+      <div class="d-flex gap-2" id="page-actions"></div>
+    </div>
+    <div class="d-flex gap-2 mb-3 align-items-center"><select class="form-select form-select-sm w-auto" id="hub-select"></select></div>    <div class="card mb-4"><div class="card-header fw-semibold">Current assignments</div><div class="card-body p-0" id="assign-list"></div></div>    <div class="card mb-4"><div class="card-header fw-semibold">Riders</div><div class="card-body p-0" id="riders-list"></div></div>
+  </main>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/vtrack-api.js"></script>
+  <script src="js/vtrack-nav.js"></script>
+  <script src="js/vtrack-biz.js"></script>
+  <script>
+
+    Biz.start(() => {
+      const canEdit = Biz.can(...Biz.ADMIN, 'fleet_manager', 'hub_manager');
+      let hubs = [], riders = [], assignments = [], vehicles = [];
+      const hubId = () => document.getElementById('hub-select').value;
+      const riderName = (id) => (riders.find((r) => r.id === id) || {}).fullName || '—';
+      const plate = (id) => (vehicles.find((v) => v.id === id) || {}).plateNumber || '—';
+
+      async function loadHubs() {
+        hubs = (await VTrackAPI.get('/hubs')).data;
+        const sel = document.getElementById('hub-select');
+        sel.innerHTML = '<option value="">All my hubs</option>' + hubs.map((h) => `<option value="${h.id}">${Biz.esc(h.name)}</option>`).join('');
+        sel.addEventListener('change', () => Biz.run(load));
+      }
+      async function load() {
+        const q = hubId() ? `?hubId=${hubId()}` : '';
+        const [r, a, v] = await Promise.all([VTrackAPI.get('/riders' + q), VTrackAPI.get('/assignments' + q + (q ? '&' : '?') + 'status=active'), VTrackAPI.get('/vehicles?limit=200')]);
+        riders = r.data; assignments = a.data; vehicles = v.data;
+        document.getElementById('assign-list').innerHTML = Biz.table([
+          { label: 'Rider', render: (x) => `<span class="fw-medium">${Biz.esc(riderName(x.riderId))}</span>` }, { label: 'Vehicle', render: (x) => Biz.esc(plate(x.vehicleId)) },
+          { label: 'Since', render: (x) => Biz.esc(x.startDate) },
+          { label: 'Daily target', cls: 'text-end', render: (x) => Biz.ghs(x.dailyTargetPesewas) }, { label: 'Daily remittance', cls: 'text-end', render: (x) => Biz.ghs(x.dailyRemittancePesewas) },
+          { label: 'Service fee', cls: 'text-end', render: (x) => Biz.ghs(x.serviceFeePesewas) },
+          { label: '', cls: 'text-end text-nowrap', render: (x) => (canEdit ? `<button class="btn btn-sm btn-outline-primary" data-aedit="${x.id}">Edit</button> <button class="btn btn-sm btn-outline-danger" data-end="${x.id}">End</button>` : '') },
+        ], assignments, 'No active assignments.');
+        document.getElementById('riders-list').innerHTML = Biz.table([
+          { label: 'Name', render: (x) => `<span class="fw-medium">${Biz.esc(x.fullName)}</span>` }, { label: 'Phone', render: (x) => Biz.esc(x.phone) },
+          { label: 'Hub', render: (x) => Biz.esc((hubs.find((h) => h.id === x.hubId) || {}).name || '—') },
+          { label: 'Guarantor', render: (x) => Biz.esc(x.guarantorName ? `${x.guarantorName} ${x.guarantorPhone || ''}` : '—') },
+          { label: 'Status', render: (x) => Biz.badge(x.status) },
+          { label: 'Vehicle', render: (x) => (x.assignedVehicleId ? Biz.esc(plate(x.assignedVehicleId)) : '<span class="text-muted">None</span>') },
+          { label: '', cls: 'text-end', render: (x) => (canEdit ? `<button class="btn btn-sm btn-outline-primary" data-redit="${x.id}">Edit</button>` : '') },
+        ], riders, 'No riders yet.');
+      }
+      if (canEdit) {
+        const a = document.createElement('button'); a.className = 'btn btn-outline-primary btn-sm'; a.textContent = 'Assign vehicle';
+        a.onclick = () => {
+          const free = riders.filter((r) => r.status === 'active' && !r.assignedVehicleId);
+          const sold = vehicles.filter((v) => v.lifecycleStatus === 'sold');
+          if (!free.length) return Biz.toast('Every active rider already has a vehicle, or there are no riders yet.', 'warning');
+          if (!sold.length) return Biz.toast('No sold vehicles are waiting for a rider. A vehicle needs an active contract first.', 'warning');
+          Biz.form({ title: 'Assign a vehicle to a rider', fields: [
+            { name: 'riderId', label: 'Rider', type: 'select', required: true, options: Biz.opts(free, (r) => r.id, (r) => r.fullName) },
+            { name: 'vehicleId', label: 'Vehicle', type: 'select', required: true, options: Biz.opts(sold, (v) => v.id, (v) => v.plateNumber) },
+            { name: 'startDate', label: 'Start date', type: 'date', required: true },
+            { name: 'dailyTargetPesewas', label: 'Daily target (what the rider is expected to earn)', type: 'money', col: 12 },
+            { name: 'dailyRemittancePesewas', label: 'Daily remittance (owed to the owner)', type: 'money', col: 6 },
+            { name: 'serviceFeePesewas', label: 'Daily service fee', type: 'money', col: 6 },
+          ], onSubmit: async (v) => { await VTrackAPI.post('/assignments', v); Biz.toast('Vehicle assigned'); load(); } });
+        };
+        const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add rider';
+        b.onclick = () => Biz.form({ title: 'Register a rider', fields: [
+          { name: 'fullName', label: 'Full name', required: true }, { name: 'phone', label: 'Phone', required: true, col: 6 }, { name: 'nationalIdNumber', label: 'Ghana Card no.', col: 6 },
+          { name: 'hubId', label: 'Hub', type: 'select', required: true, value: hubId(), options: Biz.opts(hubs, (h) => h.id, (h) => h.name) },
+          { name: 'momoNumber', label: 'Mobile money number', hint: 'Stored encrypted.' },
+          { name: 'guarantorName', label: 'Guarantor name', col: 6 }, { name: 'guarantorPhone', label: 'Guarantor phone', col: 6 },
+        ], onSubmit: async (v) => { await VTrackAPI.post('/riders', v); Biz.toast('Rider registered'); load(); } });
+        document.getElementById('page-actions').append(a, b);
+      }
+      const riderFields = (r) => [
+        { name: 'fullName', label: 'Full name', required: true, value: r.fullName }, { name: 'phone', label: 'Phone', required: true, col: 6, value: r.phone }, { name: 'nationalIdNumber', label: 'Ghana Card no.', col: 6, value: r.nationalIdNumber },
+        { name: 'hubId', label: 'Hub', type: 'select', required: true, value: r.hubId, options: Biz.opts(hubs, (h) => h.id, (h) => h.name) },
+        { name: 'momoNumber', label: 'Mobile money number', hint: 'Leave blank to keep the saved number.' },
+        { name: 'guarantorName', label: 'Guarantor name', col: 6, value: r.guarantorName }, { name: 'guarantorPhone', label: 'Guarantor phone', col: 6, value: r.guarantorPhone },
+        { name: 'status', label: 'Status', type: 'select', required: true, value: r.status, options: ['active', 'suspended', 'exited'].map((x) => ({ value: x, label: x })), hint: 'A rider with a running assignment cannot be suspended or exited until it is ended.' },
+      ];
+      document.getElementById('riders-list').addEventListener('click', (e) => {
+        const id = e.target.closest('[data-redit]')?.dataset.redit; if (!id) return; const r = riders.find((x) => x.id === id);
+        Biz.form({ title: `Edit ${r.fullName}`, fields: riderFields(r), onSubmit: async (v) => { await VTrackAPI.put(`/riders/${id}`, v); Biz.toast('Saved'); load(); } });
+      });
+      document.getElementById('assign-list').addEventListener('click', async (e) => {
+        const ae = e.target.closest('[data-aedit]')?.dataset.aedit;
+        if (ae) { const a = assignments.find((x) => x.id === ae); const m = (p) => (p == null ? '' : (Number(p) / 100).toFixed(2));
+          return Biz.form({ title: `Change amounts: ${riderName(a.riderId)} on ${plate(a.vehicleId)}`, intro: 'New amounts apply to days not yet settled. Settlements already calculated keep the old amounts.', fields: [
+            { name: 'dailyTargetPesewas', label: 'Daily target', type: 'money', col: 12, value: m(a.dailyTargetPesewas) }, { name: 'dailyRemittancePesewas', label: 'Daily remittance', type: 'money', col: 6, value: m(a.dailyRemittancePesewas) }, { name: 'serviceFeePesewas', label: 'Daily service fee', type: 'money', col: 6, value: m(a.serviceFeePesewas) },
+          ], onSubmit: async (v) => { await VTrackAPI.put(`/assignments/${ae}`, v); Biz.toast('Amounts changed'); load(); } }); }
+        const id = e.target.closest('[data-end]')?.dataset.end; if (!id) return;
+        Biz.form({ title: 'End this assignment', intro: 'The vehicle goes back to the owner\'s pool and the rider is free to be assigned another.', fields: [{ name: 'reason', label: 'Reason', type: 'select', required: true, options: ['rider left','vehicle fault','swapped rider','other'].map((x) => ({ value: x, label: x })) }],
+          submitLabel: 'End assignment', onSubmit: async (v) => { await VTrackAPI.post(`/assignments/${id}/end`, v); Biz.toast('Assignment ended'); load(); } });
+      });
+      Biz.run(async () => { await loadHubs(); await load(); });
+    });
+
+  </script>
+</body>
+</html>
